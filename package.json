@@ -22,10 +22,12 @@
     "node": "20.x"
   },
   "dependencies": {
+    "@google-cloud/bigquery": "^8.1.1",
     "chart.js": "^4.4.0",
     "d3": "^7.9.0",
     "d3-cloud": "^1.2.7",
     "d3-selection": "^3.0.0",
+    "dotenv": "^17.2.3",
     "papaparse": "^5.5.3",
     "wordcloud": "^1.2.3"
   }

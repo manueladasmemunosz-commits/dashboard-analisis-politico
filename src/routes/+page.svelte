@@ -256,10 +256,52 @@
 		return fixed;
 	}
 
-	function handleBigQuerySearch(event) {
+	async function handleBigQuerySearch(event) {
 		console.log('☁️ BigQuery search:', event.detail);
-		// TODO: Implementar búsqueda BigQuery
-		alert('BigQuery no implementado aún - usar CSV por ahora');
+		const { searchTerm, dateFrom, dateTo } = event.detail;
+
+		// Validar que las fechas estén definidas
+		if (!dateFrom || !dateTo) {
+			alert('⚠️ Por favor selecciona un rango de fechas');
+			return;
+		}
+
+		try {
+			console.log('🔄 Consultando BigQuery...');
+
+			const response = await fetch('/api/bigquery', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					searchTerm: searchTerm || '',
+					dateFrom,
+					dateTo
+				})
+			});
+
+			const result = await response.json();
+
+			if (result.success) {
+				console.log('✅ Datos obtenidos de BigQuery:', result.count, 'registros');
+				console.log('📊 Metadata:', result.metadata);
+
+				// Cargar datos en el store (igual que CSV)
+				loadCsvData(result.data);
+
+				alert(`✅ ${result.count} registros cargados desde BigQuery\n` +
+				      `📅 Rango: ${result.metadata.rangeDays} días\n` +
+				      `🔍 Búsqueda: "${searchTerm || 'todos'}"`);
+			} else {
+				console.error('❌ Error en BigQuery:', result.error);
+				alert('❌ Error al consultar BigQuery:\n' + result.error);
+			}
+
+		} catch (error) {
+			console.error('❌ Error de red:', error);
+			alert('❌ Error al conectar con BigQuery:\n' + error.message);
+		}
 	}
 
 	function handleSearch(event) {

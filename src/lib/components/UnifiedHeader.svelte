@@ -26,7 +26,7 @@
 	}
 
 	function handleBigQuerySearch() {
-		dispatch('bigquerySearch', { searchTerm, dateFrom });
+		dispatch('bigquerySearch', { searchTerm, dateFrom, dateTo });
 	}
 </script>
 
