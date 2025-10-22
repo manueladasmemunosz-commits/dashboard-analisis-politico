@@ -1,0 +1,372 @@
+<script>
+	import { onMount, afterUpdate } from 'svelte';
+	import { Chart, registerables } from 'chart.js';
+	import PostDetailsModal from '$lib/components/PostDetailsModal.svelte';
+
+	export let data = [];
+	export let chartType = 'scatter';
+
+	let canvas;
+	let chartInstance;
+	let mounted = false;
+
+	// Estado del modal
+	let showModal = false;
+	let selectedPosts = [];
+	let selectedTitle = '';
+
+	// Web Worker state
+	let scatterWorker = null;
+	let scatterData = [];
+	let isProcessing = false;
+	let progress = 0;
+	let originalPosts = [];
+
+	// Registrar Chart.js solo una vez
+	if (typeof window !== 'undefined') {
+		Chart.register(...registerables);
+	}
+
+	// Inicializar Worker
+	function initScatterWorker() {
+		if (typeof window === 'undefined') return null;
+
+		try {
+			scatterWorker = new Worker(
+				new URL('../../workers/scatter.worker.js', import.meta.url),
+				{ type: 'module' }
+			);
+
+			scatterWorker.onmessage = (e) => {
+				const { type, data: workerData, progress: prog, message } = e.data;
+
+				if (type === 'progress') {
+					progress = prog;
+					isProcessing = true;
+					console.log(`⏳ Scatter: ${message} (${prog}%)`);
+				} else if (type === 'complete') {
+					scatterData = workerData.scatterData;
+					isProcessing = false;
+					progress = 100;
+					console.log(`✅ Scatter Plot procesado - ${workerData.stats.totalPoints} puntos`);
+					createChart();
+				}
+			};
+
+			scatterWorker.onerror = (error) => {
+				console.error('❌ Error en Scatter Worker:', error);
+				isProcessing = false;
+				progress = 0;
+			};
+
+			return scatterWorker;
+		} catch (error) {
+			console.error('❌ No se pudo iniciar Scatter Worker:', error);
+			return null;
+		}
+	}
+
+	$: if (mounted && data.length > 0) {
+		originalPosts = data;
+		if (!scatterWorker) {
+			scatterWorker = initScatterWorker();
+		}
+
+		if (scatterWorker) {
+			isProcessing = true;
+			progress = 0;
+			console.log(`☁️ Iniciando procesamiento Scatter: ${data.length} posts`);
+			scatterWorker.postMessage({ posts: data, chunkSize: 10000 });
+		} else {
+			// Fallback sin worker
+			processDataSync();
+		}
+	}
+
+	$: if (mounted && chartInstance && chartType && scatterData.length > 0 && !isProcessing) {
+		updateChart();
+	}
+
+	function processDataSync() {
+		scatterData = data.map(post => ({
+			x: parseInt(post.likes || 0),
+			y: parseInt(post.replies || 0),
+			engagement: parseInt(post.likes || 0) + parseInt(post.replies || 0) + parseInt(post.shared || 0),
+			post: post
+		}));
+		createChart();
+	}
+
+	function createChart() {
+		if (!canvas || scatterData.length === 0) return;
+
+		// Destruir gráfico existente
+		if (chartInstance) {
+			chartInstance.destroy();
+		}
+
+		const ctx = canvas.getContext('2d');
+
+		// Limitar a 5000 puntos para rendimiento (sampling inteligente)
+		let displayData = scatterData;
+		if (scatterData.length > 5000) {
+			// Ordenar por engagement y tomar top 2500 + 2500 random
+			const sorted = [...scatterData].sort((a, b) => b.engagement - a.engagement);
+			const topEngagement = sorted.slice(0, 2500);
+
+			// Tomar muestra aleatoria del resto
+			const remaining = sorted.slice(2500);
+			const randomSample = [];
+			const sampleSize = 2500;
+			const step = Math.floor(remaining.length / sampleSize);
+			for (let i = 0; i < remaining.length && randomSample.length < sampleSize; i += step) {
+				randomSample.push(remaining[i]);
+			}
+
+			displayData = [...topEngagement, ...randomSample];
+			console.log(`📊 Scatter plot: Mostrando ${displayData.length} de ${scatterData.length} puntos (top engagement + muestra)`);
+		} else {
+			console.log(`📊 Creando scatter plot con ${scatterData.length} puntos...`);
+		}
+
+		// Calcular maxEngagement sin spread operator
+		let maxEngagement = 0;
+		for (let i = 0; i < displayData.length; i++) {
+			const total = displayData[i].x + displayData[i].y;
+			if (total > maxEngagement) maxEngagement = total;
+		}
+
+		const chartTitle = 'Engagement: Likes vs Replies';
+
+		chartInstance = new Chart(ctx, {
+			type: chartType === 'bubble' ? 'bubble' : 'scatter',
+			data: {
+				datasets: [{
+					label: 'Posts (Likes vs Replies)',
+					data: chartType === 'bubble'
+						? displayData.map(d => ({
+							x: d.x,
+							y: d.y,
+							r: Math.min(Math.sqrt((d.x + d.y) / 10), 20) // Radio basado en engagement
+						}))
+						: displayData,
+					backgroundColor: 'rgba(52, 152, 219, 0.6)',
+					borderColor: '#3498db',
+					borderWidth: 1,
+					pointRadius: chartType === 'bubble' ? undefined : 5,
+					pointHoverRadius: chartType === 'bubble' ? undefined : 7
+				}]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				onClick: (event, elements) => {
+					if (elements.length > 0) {
+						const index = elements[0].index;
+						const clickedData = displayData[index];
+
+						// Buscar el post original por ID
+						let clickedPost = originalPosts.find(p => p.id === clickedData.postId);
+
+				if (!clickedPost) {
+					clickedPost = originalPosts.find(p =>
+						parseInt(p.likes || 0) === clickedData.x &&
+						parseInt(p.replies || 0) === clickedData.y &&
+						p.user_name === clickedData.user
+					);
+				}
+
+						selectedTitle = `Post de ${clickedPost.user_name || 'Usuario desconocido'}`;
+						selectedPosts = [clickedPost];
+						showModal = true;
+
+						console.log('📊 Click en post:', clickedPost.text?.substring(0, 50));
+					}
+				},
+				plugins: {
+					title: {
+						display: true,
+						text: chartTitle
+					},
+					tooltip: {
+						callbacks: {
+							label: function(context) {
+								const dataPoint = displayData[context.dataIndex];
+								return [
+									`Likes: ${dataPoint.x}`,
+									`Replies: ${dataPoint.y}`,
+									`Engagement: ${dataPoint.engagement}`,
+									`Usuario: ${dataPoint.user || 'Desconocido'}`,
+									`Texto: ${dataPoint.text || 'Sin texto'}`,
+									'(Click para ver detalles)'
+								];
+							}
+						}
+					},
+					legend: {
+						display: false
+					}
+				},
+				scales: {
+					x: {
+						type: 'linear',
+						position: 'bottom',
+						beginAtZero: true,
+						title: {
+							display: true,
+							text: 'Likes'
+						}
+					},
+					y: {
+						beginAtZero: true,
+						title: {
+							display: true,
+							text: 'Replies'
+						}
+					}
+				}
+			}
+		});
+
+		console.log('📊 Engagement Scatter chart created');
+	}
+
+	function updateChart() {
+		createChart();
+	}
+
+	onMount(() => {
+		mounted = true;
+		console.log('📊 EngagementScatterChart montado, datos:', data.length);
+		if (data.length > 0) {
+			createChart();
+		}
+	});
+
+	afterUpdate(() => {
+		if (mounted && canvas && data.length > 0 && !chartInstance) {
+			createChart();
+		}
+	});
+</script>
+
+<div class="engagement-scatter-container">
+	{#if data.length === 0}
+		<div class="no-data-message">
+			<div class="no-data-icon">💬</div>
+			<h3>No hay datos disponibles</h3>
+			<p>No se encontraron posts con los filtros seleccionados</p>
+		</div>
+	{:else if isProcessing}
+		<div class="worker-processing">
+			<div class="spinner"></div>
+			<h3>🔧 Procesando Scatter Plot...</h3>
+			<p>Analizando {progress}% de los posts</p>
+			<div class="progress-bar">
+				<div class="progress-fill" style="width: {progress}%"></div>
+			</div>
+		</div>
+	{:else}
+		<canvas bind:this={canvas} class="chart-canvas"></canvas>
+	{/if}
+</div>
+
+<PostDetailsModal
+	bind:isOpen={showModal}
+	posts={selectedPosts}
+	date={selectedTitle}
+	on:close={() => showModal = false}
+/>
+
+<style>
+	.engagement-scatter-container {
+		position: relative;
+		cursor: pointer;
+	}
+
+	.chart-canvas {
+		width: 100% !important;
+		height: 400px !important;
+		max-height: 400px;
+		cursor: pointer;
+	}
+
+	.no-data-message {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		height: 400px;
+		color: #666;
+		text-align: center;
+	}
+
+	.no-data-icon {
+		font-size: 4rem;
+		margin-bottom: 1rem;
+		opacity: 0.3;
+	}
+
+	.no-data-message h3 {
+		margin: 0 0 0.5rem 0;
+		font-size: 1.5rem;
+		color: #333;
+	}
+
+	.no-data-message p {
+		margin: 0;
+		font-size: 1rem;
+		color: #999;
+	}
+
+	.worker-processing {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		height: 400px;
+		color: #666;
+		text-align: center;
+	}
+
+	.spinner {
+		border: 4px solid rgba(52, 152, 219, 0.1);
+		border-left: 4px solid #3498db;
+		border-radius: 50%;
+		width: 50px;
+		height: 50px;
+		animation: spin 1s linear infinite;
+		margin-bottom: 1rem;
+	}
+
+	@keyframes spin {
+		0% { transform: rotate(0deg); }
+		100% { transform: rotate(360deg); }
+	}
+
+	.worker-processing h3 {
+		margin: 0 0 0.5rem 0;
+		font-size: 1.5rem;
+		color: #333;
+	}
+
+	.worker-processing p {
+		margin: 0 0 1rem 0;
+		font-size: 1rem;
+		color: #999;
+	}
+
+	.progress-bar {
+		width: 300px;
+		height: 8px;
+		background-color: #e0e0e0;
+		border-radius: 4px;
+		overflow: hidden;
+	}
+
+	.progress-fill {
+		height: 100%;
+		background: linear-gradient(90deg, #3498db, #2ecc71);
+		transition: width 0.3s ease;
+	}
+</style>

@@ -1,0 +1,819 @@
+/* Estilos para Chart Widgets con Controles Verticales */
+
+.chart-widget {
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    border: 1px solid #f1f5f9;
+    overflow: visible;
+    transition: all 0.2s ease;
+}
+
+.chart-widget:hover {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    border-color: #e2e8f0;
+}
+
+.widget-header {
+    padding: 1.25rem 1.5rem 1rem;
+    border-bottom: 1px solid #f1f5f9;
+    background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.widget-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0;
+    flex: 1;
+}
+
+.widget-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.action-btn {
+    padding: 0.5rem;
+    background: white;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+}
+
+.action-btn:hover {
+    background: #f8fafc;
+    border-color: #3b82f6;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+}
+
+.action-btn:active {
+    transform: translateY(0);
+}
+
+.export-btn:hover {
+    border-color: #059669;
+    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.1);
+}
+
+.fullscreen-btn:hover {
+    border-color: #dc2626;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.1);
+}
+
+.widget-content {
+    display: flex;
+    min-height: 400px;
+}
+
+.widget-controls-sidebar {
+    width: 220px;
+    background: #f8fafc;
+    border-right: 1px solid #f1f5f9;
+    padding: 1.5rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    overflow: visible;
+}
+
+.chart-container {
+    flex: 1;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 350px;
+}
+
+/* Estilos para controles verticales */
+.widget-controls-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    width: 100%;
+    overflow: visible;
+    position: relative;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    position: relative;
+    overflow: visible;
+}
+
+.control-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.25rem;
+}
+
+.chart-control-select {
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    background: white;
+    color: #374151;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.chart-control-select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
+}
+
+.chart-control-select:hover {
+    border-color: #cbd5e1;
+}
+
+.date-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.date-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #6b7280;
+    margin-bottom: 0.125rem;
+}
+
+.chart-control-date {
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    background: white;
+    color: #374151;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.chart-control-date:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
+}
+
+.chart-control-date:hover {
+    border-color: #cbd5e1;
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+    .widget-content {
+        flex-direction: column;
+    }
+
+    .widget-controls-sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid #f1f5f9;
+        padding: 1rem 1.5rem;
+    }
+
+    .widget-controls-vertical {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: space-between;
+    }
+
+    .control-group {
+        flex: 1;
+        min-width: 200px;
+        margin-right: 1rem;
+    }
+
+    .control-group:last-child {
+        margin-right: 0;
+    }
+}
+
+@media (max-width: 768px) {
+    .widget-controls-vertical {
+        flex-direction: column;
+    }
+
+    .control-group {
+        margin-right: 0;
+        min-width: auto;
+    }
+
+    .chart-container {
+        padding: 1rem;
+        min-height: 300px;
+    }
+
+    .widget-header {
+        padding: 1rem 1.25rem 0.75rem;
+    }
+
+    .widget-title {
+        font-size: 1rem;
+    }
+}
+
+/* Tema chileno para widgets */
+.chart-widget {
+    border: 1px solid rgba(30, 64, 175, 0.1);
+}
+
+.widget-header {
+    background: linear-gradient(135deg, rgba(30, 64, 175, 0.03) 0%, #ffffff 100%);
+    border-bottom-color: rgba(30, 64, 175, 0.1);
+}
+
+.widget-title {
+    color: #1e40af;
+}
+
+.widget-controls-sidebar {
+    background: linear-gradient(180deg, rgba(30, 64, 175, 0.02) 0%, rgba(248, 250, 252, 1) 100%);
+    border-right-color: rgba(30, 64, 175, 0.1);
+}
+
+.chart-control-select:focus,
+.chart-control-date:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.control-label {
+    color: #1e40af;
+}
+
+/* Botón de actualizar */
+.refresh-btn {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    margin-top: 0.5rem;
+    position: relative;
+    z-index: 1;
+}
+
+.refresh-btn:hover {
+    background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);
+}
+
+.refresh-btn:active {
+    transform: translateY(0);
+}
+
+.refresh-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Animación de carga para el botón */
+.refresh-btn.loading {
+    background: linear-gradient(135deg, #6b7280 0%, #9ca3af 100%);
+    cursor: not-allowed;
+}
+
+.refresh-btn.loading::before {
+    content: '';
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid transparent;
+    border-top: 2px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 0.375rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Estilos para filtros activos */
+.refresh-btn.has-filters {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    animation: pulse-filters 2s infinite;
+}
+
+.refresh-btn.has-filters:hover {
+    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+    animation: none;
+}
+
+@keyframes pulse-filters {
+    0%, 100% {
+        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+    }
+    50% {
+        box-shadow: 0 4px 20px rgba(220, 38, 38, 0.5);
+    }
+}
+
+.filters-indicator {
+    font-size: 0.75rem;
+    color: #dc2626;
+    text-align: center;
+    margin-top: 0.375rem;
+    font-weight: 500;
+    animation: blink 1.5s infinite;
+}
+
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.5; }
+}
+
+/* Multi-select compacto para redes sociales */
+.multi-select-wrapper {
+    position: relative;
+    background: white;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    min-height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    z-index: 1;
+}
+
+.selected-networks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    flex: 1;
+}
+
+.network-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.375rem;
+    background: #3b82f6;
+    color: white;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.network-tag.all {
+    background: #059669;
+}
+
+.network-tag.twitter {
+    background: #1da1f2;
+}
+
+.network-tag.news {
+    background: #dc2626;
+}
+
+.network-tag.tiktok {
+    background: #000000;
+}
+
+.network-tag.other {
+    background: #6b7280;
+}
+
+.network-tag.undefined {
+    background: #9ca3af;
+}
+
+.network-dropdown {
+    position: relative;
+    z-index: 10;
+}
+
+.network-dropdown[open] {
+    z-index: 999999;
+}
+
+.network-dropdown[open] .dropdown-content {
+    z-index: 999999;
+}
+
+.multi-select-wrapper:has(.network-dropdown[open]) {
+    z-index: 999999;
+}
+
+.dropdown-toggle {
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+    background: #f3f4f6;
+    border: none;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    list-style: none;
+}
+
+.dropdown-toggle::-webkit-details-marker {
+    display: none;
+}
+
+.dropdown-toggle:hover {
+    background: #e5e7eb;
+}
+
+.dropdown-content {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 999999;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.25);
+    padding: 0.5rem;
+    min-width: 180px;
+    max-height: 300px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.network-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.5rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.network-option:hover {
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.network-option input[type="checkbox"] {
+    width: 0.875rem;
+    height: 0.875rem;
+    border: 1.5px solid #d1d5db;
+    border-radius: 0.125rem;
+    background: white;
+    cursor: pointer;
+    position: relative;
+    appearance: none;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.network-option input[type="checkbox"]:checked {
+    background: #3b82f6;
+    border-color: #3b82f6;
+}
+
+.network-option input[type="checkbox"]:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 0.625rem;
+    font-weight: bold;
+}
+
+.network-option input[type="checkbox"]:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Estilos adicionales para mejorar la visualización del dropdown */
+.control-group {
+    position: relative;
+    z-index: 1;
+}
+
+.multi-select-wrapper:focus-within .dropdown-content {
+    display: block;
+}
+
+/* Scrollbar personalizada para el dropdown */
+.dropdown-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.dropdown-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.dropdown-content::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.dropdown-content::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Asegurar que el dropdown se vea por encima de otros elementos */
+.network-dropdown[open] .dropdown-content {
+    display: block;
+}
+
+/* Estilos para pantalla completa */
+.chart-widget:fullscreen {
+    background: #1a1a1a;
+    width: 100vw !important;
+    height: 100vh !important;
+    display: flex;
+    flex-direction: column;
+    border-radius: 0;
+}
+
+.chart-widget:fullscreen .widget-header {
+    background: #2d3748;
+    border-bottom-color: #4a5568;
+    padding: 1rem 2rem;
+}
+
+.chart-widget:fullscreen .widget-title {
+    color: white;
+    font-size: 1.5rem;
+}
+
+.chart-widget:fullscreen .action-btn {
+    background: #4a5568;
+    border-color: #718096;
+    color: white;
+}
+
+.chart-widget:fullscreen .action-btn:hover {
+    background: #2d3748;
+    border-color: #a0aec0;
+}
+
+.chart-widget:fullscreen .widget-content {
+    flex: 1;
+    min-height: calc(100vh - 80px);
+    background: #1a1a1a;
+}
+
+.chart-widget:fullscreen .widget-controls-sidebar {
+    background: #2d3748;
+    border-right-color: #4a5568;
+}
+
+.chart-widget:fullscreen .control-label {
+    color: #e2e8f0;
+}
+
+.chart-widget:fullscreen .chart-control-select,
+.chart-widget:fullscreen .chart-control-date {
+    background: #4a5568;
+    border-color: #718096;
+    color: white;
+}
+
+.chart-widget:fullscreen .chart-container {
+    background: #1a1a1a;
+    padding: 2rem;
+}
+
+/* Estilos para navegadores WebKit */
+.chart-widget:-webkit-full-screen {
+    background: #1a1a1a;
+    width: 100vw !important;
+    height: 100vh !important;
+}
+
+/* Estilos para Firefox */
+.chart-widget:-moz-full-screen {
+    background: #1a1a1a;
+    width: 100vw !important;
+    height: 100vh !important;
+}
+
+/* Auto-refresh controls */
+.auto-refresh-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.auto-refresh-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    transition: all 0.2s ease;
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.auto-refresh-toggle:hover {
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.auto-refresh-checkbox {
+    width: 1rem;
+    height: 1rem;
+    border: 1.5px solid #d1d5db;
+    border-radius: 0.25rem;
+    background: white;
+    cursor: pointer;
+    position: relative;
+    appearance: none;
+    transition: all 0.2s ease;
+}
+
+.auto-refresh-checkbox:checked {
+    background: #3b82f6;
+    border-color: #3b82f6;
+}
+
+.auto-refresh-checkbox:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+.auto-refresh-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    flex: 1;
+}
+
+.auto-refresh-progress {
+    width: 100%;
+    height: 4px;
+    background: #e5e7eb;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.auto-refresh-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+    border-radius: 2px;
+    transition: width 0.5s ease;
+    animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow: 0 0 5px rgba(59, 130, 246, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+    }
+}
+
+.timer-select {
+    width: 100%;
+    padding: 0.375rem 0.5rem;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    background: white;
+    color: #374151;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.timer-select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.timer-select:hover {
+    border-color: #cbd5e1;
+}
+
+/* Loading animations */
+.chart-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border-radius: inherit;
+}
+
+.loading-spinner {
+    width: 3rem;
+    height: 3rem;
+    border: 4px solid #e5e7eb;
+    border-top: 4px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin-loading 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+@keyframes spin-loading {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #6b7280;
+    text-align: center;
+}
+
+.chart-content {
+    width: 100%;
+    height: 100%;
+    transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+.chart-content.loading {
+    opacity: 0.3;
+    filter: blur(1px);
+    pointer-events: none;
+}
+
+/* Mejoras visuales adicionales */
+.chart-container {
+    position: relative;
+    overflow: hidden;
+}
+
+/* Animación de entrada suave para gráficos */
+.chart-content {
+    animation: fadeInChart 0.5s ease-out;
+}
+
+@keyframes fadeInChart {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Pulso sutil en el header cuando se está cargando */
+.chart-widget .widget-header {
+    transition: all 0.3s ease;
+}
+
+.chart-widget:has(.chart-loading-overlay) .widget-header {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, #ffffff 100%);
+    animation: pulse-header 2s infinite;
+}
+
+@keyframes pulse-header {
+    0%, 100% {
+        box-shadow: 0 0 0 rgba(59, 130, 246, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+    }
+}

@@ -1,0 +1,21 @@
+Líneas 168-183 deben reemplazarse con:
+
+					// Buscar el post original por ID
+					let clickedPost = originalPosts.find(p => p.id === clickedData.postId);
+
+					if (!clickedPost) {
+						clickedPost = originalPosts.find(p =>
+							parseInt(p.likes || 0) === clickedData.x &&
+							parseInt(p.replies || 0) === clickedData.y &&
+							p.user_name === clickedData.user
+						);
+					}
+
+					if (clickedPost) {
+						selectedTitle = `Post de ${clickedPost.user_name || 'Usuario desconocido'}`;
+						selectedPosts = [clickedPost];
+						showModal = true;
+						console.log('📊 Click en post:', clickedPost.text?.substring(0, 50));
+					} else {
+						console.error('❌ No se encontró el post original para:', clickedData);
+					}
