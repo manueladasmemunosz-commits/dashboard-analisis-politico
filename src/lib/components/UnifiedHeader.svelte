@@ -24,10 +24,6 @@
 			console.log('❌ No se seleccionó ningún archivo');
 		}
 	}
-
-	function handleBigQuerySearch() {
-		dispatch('bigquerySearch', { searchTerm, dateFrom, dateTo });
-	}
 </script>
 
 <header class="unified-header">
@@ -79,12 +75,8 @@
 					on:change={handleCsvUpload}
 				>
 				<label for="csv-upload" class="upload-btn">
-					📄 CSV
+					📄 Cargar CSV Local
 				</label>
-
-				<button class="bigquery-btn" on:click={handleBigQuerySearch}>
-					☁️ BigQuery
-				</button>
 			</div>
 		</div>
 	</div>

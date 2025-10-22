@@ -256,13 +256,13 @@
 		return fixed;
 	}
 
-	async function handleBigQuerySearch(event) {
-		console.log('☁️ BigQuery search:', event.detail);
+	async function handleSearch(event) {
+		console.log('🔍 Search:', event.detail);
 		const { searchTerm, dateFrom, dateTo } = event.detail;
 
 		// Validar que las fechas estén definidas
 		if (!dateFrom || !dateTo) {
-			alert('⚠️ Por favor selecciona un rango de fechas');
+			alert('⚠️ Por favor selecciona un rango de fechas para buscar en BigQuery');
 			return;
 		}
 
@@ -287,7 +287,7 @@
 				console.log('✅ Datos obtenidos de BigQuery:', result.count, 'registros');
 				console.log('📊 Metadata:', result.metadata);
 
-				// Cargar datos en el store (igual que CSV)
+				// Cargar datos en el store
 				loadCsvData(result.data);
 
 				alert(`✅ ${result.count} registros cargados desde BigQuery\n` +
@@ -304,16 +304,13 @@
 		}
 	}
 
-	function handleSearch(event) {
-		console.log('🔍 Search:', event.detail);
-	}
-
 	onMount(() => {
 		console.log('🚀 Dashboard Svelte iniciado');
-		console.log('📄 Por favor carga un archivo CSV usando el botón "📄 CSV" en el header');
+		console.log('☁️ El botón "Buscar" consulta BigQuery automáticamente');
+		console.log('📄 Usa "Cargar CSV Local" solo si quieres analizar un archivo local');
 
 		// Auto-carga de demo data DESHABILITADA para evitar problemas de performance
-		// El usuario debe cargar manualmente su CSV
+		// El usuario debe usar BigQuery o cargar manualmente su CSV
 	});
 </script>
 
@@ -325,7 +322,6 @@
 <div class="dashboard-container">
 	<UnifiedHeader
 		on:csvUpload={handleCsvUpload}
-		on:bigquerySearch={handleBigQuerySearch}
 		on:search={handleSearch}
 	/>
 
