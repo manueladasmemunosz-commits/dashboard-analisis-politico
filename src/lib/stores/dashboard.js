@@ -198,10 +198,14 @@ export const filteredData = derived(
 
 		let filtered = [...$rawData];
 		let originalCount = filtered.length;
+		let afterSearchTerm = originalCount;
+		let afterDates = originalCount;
+		let afterNetworks = originalCount;
 
 		// Filtro por término de búsqueda con operadores lógicos
 		if ($filters.searchTerm) {
 			filtered = filtered.filter(post => applySearchFilter(post, $filters.searchTerm));
+			afterSearchTerm = filtered.length;
 		}
 
 		// Filtro por fechas (mejorado para manejar datos corruptos)
@@ -221,6 +225,7 @@ export const filteredData = derived(
 				const postDate = rawDate.replace(/\//g, '-');
 				return postDate >= $filters.dateFrom && postDate <= $filters.dateTo;
 			});
+			afterDates = filtered.length;
 		}
 
 		// Filtro por red social (múltiples redes)
@@ -289,11 +294,27 @@ export const filteredData = derived(
 					return false;
 				});
 			});
+			afterNetworks = filtered.length;
 		}
 
-		// Solo log cuando hay datos para debugging
+		// Log detallado para debugging del filtrado
 		if (originalCount > 0 && filtered.length !== originalCount) {
-			console.log(`✅ Filtrado: ${filtered.length}/${originalCount} posts`);
+			const searchRemoved = originalCount - afterSearchTerm;
+			const datesRemoved = afterSearchTerm - afterDates;
+			const networksRemoved = afterDates - afterNetworks;
+
+			console.log(`🔍 DEBUG FILTRADO DETALLADO:`);
+			console.log(`  📊 Original: ${originalCount} posts`);
+			if ($filters.searchTerm) {
+				console.log(`  🔤 Después searchTerm "${$filters.searchTerm}": ${afterSearchTerm} (eliminados: ${searchRemoved})`);
+			}
+			if ($filters.dateFrom && $filters.dateTo) {
+				console.log(`  📅 Después fechas (${$filters.dateFrom} a ${$filters.dateTo}): ${afterDates} (eliminados: ${datesRemoved})`);
+			}
+			if ($filters.selectedNetworks && !$filters.selectedNetworks.includes('all')) {
+				console.log(`  🌐 Después redes ${JSON.stringify($filters.selectedNetworks)}: ${afterNetworks} (eliminados: ${networksRemoved})`);
+			}
+			console.log(`  ✅ Final: ${filtered.length}/${originalCount} posts`);
 		}
 
 		return filtered;
