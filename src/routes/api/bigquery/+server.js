@@ -168,10 +168,31 @@ export async function POST({ request }) {
 		`;
 
 		// Agregar término de búsqueda si existe
-		// IMPORTANTE: Usar LOWER() para búsqueda case-insensitive (como en Colab)
+		// IMPORTANTE: Extraer palabras clave para búsqueda en BigQuery
+		// Los operadores lógicos (AND, OR, NOT) se aplican después en el cliente
 		if (searchTerm && searchTerm.trim()) {
-			const safeSearchTerm = escapeSqlString(searchTerm.trim().toLowerCase());
-			baseQuery += ` AND (LOWER(text) LIKE '%${safeSearchTerm}%' OR LOWER(user_name) LIKE '%${safeSearchTerm}%')`;
+			// Extraer todas las palabras clave (sin operadores, paréntesis, comillas)
+			const keywords = searchTerm
+				.toLowerCase()
+				.replace(/[()]/g, ' ') // Eliminar paréntesis
+				.replace(/"([^"]+)"/g, '$1') // Eliminar comillas pero mantener el texto
+				.split(/\s+/) // Dividir por espacios
+				.filter(word =>
+					word.length > 2 && // Palabras de más de 2 caracteres
+					!['and', 'or', 'not'].includes(word) // Excluir operadores
+				)
+				.map(word => word.replace(/\*/g, '%')); // Convertir * a % para SQL LIKE
+
+			if (keywords.length > 0) {
+				// Buscar cualquiera de las palabras clave en BigQuery (OR)
+				const searchConditions = keywords.map(keyword => {
+					const safeKeyword = escapeSqlString(keyword);
+					return `(LOWER(text) LIKE '%${safeKeyword}%' OR LOWER(user_name) LIKE '%${safeKeyword}%')`;
+				});
+
+				baseQuery += ` AND (${searchConditions.join(' OR ')})`;
+				console.log(`🔍 Búsqueda BigQuery con ${keywords.length} palabras clave:`, keywords);
+			}
 		}
 
 		// Ordenar por fecha descendente (sin límite de registros)
