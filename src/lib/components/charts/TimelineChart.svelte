@@ -106,7 +106,9 @@
 				return groupKey;
 			}
 
-			const dateObj = new Date(dateStr);
+			// Parsear fecha como UTC para evitar conversión de zona horaria
+			const [year, month, day] = dateStr.split('-');
+			const dateObj = new Date(Date.UTC(year, month - 1, day));
 			const hour = hourStr.padStart(2, '0');
 
 			// Determinar si debemos mostrar la fecha (cuando cambia el día o es el primero)
@@ -118,21 +120,23 @@
 			}
 
 			if (showDate) {
-				const dayMonth = dateObj.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+				const dayMonth = dateObj.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 				return `${dayMonth} ${hour}:00`;
 			} else {
 				return `${hour}:00`;
 			}
 		} else if (gran === 'day') {
-			const dateObj = new Date(groupKey);
-			return dateObj.toLocaleDateString('es-CL', { month: 'short', day: 'numeric' });
+			// Parsear fecha como UTC para evitar conversión de zona horaria
+			const [year, month, day] = groupKey.split('-');
+			const dateObj = new Date(Date.UTC(year, month - 1, day));
+			return dateObj.toLocaleDateString('es-CL', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 		} else if (gran === 'week') {
 			const [year, week] = groupKey.split('-W');
 			return `Sem ${week}, ${year}`;
 		} else if (gran === 'month') {
 			const [year, month] = groupKey.split('-');
-			const dateObj = new Date(year, parseInt(month) - 1, 1);
-			return dateObj.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
+			const dateObj = new Date(Date.UTC(year, month - 1, 1));
+			return dateObj.toLocaleDateString('es-CL', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 		}
 		return groupKey;
 	}
@@ -418,8 +422,9 @@
 								if (granularity === 'hour') {
 									const [dateStr, hourStr] = clickedKey.split(' ');
 									if (hourStr) {
-										const dateObj = new Date(dateStr);
-										const dayMonth = dateObj.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+										const [year, month, day] = dateStr.split('-');
+										const dateObj = new Date(Date.UTC(year, month - 1, day));
+										const dayMonth = dateObj.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 										selectedDate = `Posts publicados el ${dayMonth} a las ${hourStr}:00`;
 									} else {
 										selectedDate = formatLabel(clickedKey, granularity);
@@ -451,8 +456,9 @@
 								if (granularity === 'hour') {
 									const [dateStr, hourStr] = key.split(' ');
 									if (!hourStr) return key; // Validación defensiva
-									const dateObj = new Date(dateStr);
-									const dayMonth = dateObj.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+									const [year, month, day] = dateStr.split('-');
+									const dateObj = new Date(Date.UTC(year, month - 1, day));
+									const dayMonth = dateObj.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 									return `${dayMonth} ${hourStr}:00`;
 								}
 								return formatLabel(key, granularity);
