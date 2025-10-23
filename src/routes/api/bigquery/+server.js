@@ -160,10 +160,17 @@ export async function POST({ request }) {
 		const { diffDays } = validateDateRange(dateFrom, dateTo);
 
 		// Construir query segura
+		// IMPORTANTE: Para incluir TODO el día final, usamos < día_siguiente
+		// Ejemplo: dateTo='2025-10-23' debe incluir hasta 2025-10-23 23:59:59
+		// Por eso usamos created < '2025-10-24' en lugar de created <= '2025-10-23'
+		const dateToNextDay = new Date(dateTo);
+		dateToNextDay.setDate(dateToNextDay.getDate() + 1);
+		const dateToInclusive = dateToNextDay.toISOString().split('T')[0];
+
 		let baseQuery = `
 			SELECT * FROM \`${AUTHORIZED_TABLE}\`
 			WHERE created >= '${dateFrom}'
-			  AND created <= '${dateTo}'
+			  AND created < '${dateToInclusive}'
 			  AND name_proyecto != '${EXCLUDED_PROJECT}'
 		`;
 
