@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { rawData, filteredData, loadCsvData, processWordCloudData } from '$lib/stores/dashboard.js';
+	import { rawData, filteredData, loadCsvData, processWordCloudData, updateFilters } from '$lib/stores/dashboard.js';
 
 	// NO activar automáticamente el Word Cloud - solo cuando el usuario haga click
 	import UnifiedHeader from '$lib/components/UnifiedHeader.svelte';
@@ -298,6 +298,14 @@
 
 				// Cargar datos en el store
 				loadCsvData(result.data);
+
+				// IMPORTANTE: Actualizar filtros con el searchTerm para que el filtro derivado lo aplique correctamente
+				// BigQuery ya trajo un superconjunto, ahora el cliente aplica los operadores lógicos
+				updateFilters({
+					searchTerm: searchTerm || '',
+					dateFrom,
+					dateTo
+				});
 
 				alert(`✅ ${result.count} registros cargados desde BigQuery\n` +
 				      `📅 Rango: ${result.metadata.rangeDays} días\n` +
