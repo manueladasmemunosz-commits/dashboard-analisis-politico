@@ -18,6 +18,22 @@
 		}
 	}
 
+	// Formatear fecha según el tipo de fuente
+	// Las noticias tienen hora de scraping (03:00 AM), sumamos 9 horas para ajustar a horario real (~12:00)
+	function formatPostDate(post) {
+		if (!post.created) return 'Sin fecha';
+
+		let date = new Date(post.created);
+
+		// Si es noticia, sumar 9 horas para ajustar de 03:00 → 12:00
+		if (post.source === 'news') {
+			date = new Date(date.getTime() + (9 * 60 * 60 * 1000)); // +9 horas en milisegundos
+		}
+
+		// Mostrar fecha + hora para todas las fuentes
+		return date.toLocaleString('es-CL');
+	}
+
 	// Agrupar posts por usuario
 	$: userGroups = posts.reduce((groups, post) => {
 		const userName = post.user_name || 'Usuario desconocido';
@@ -81,7 +97,7 @@
 											 '🌐 ' + (post.source || 'Desconocido')}
 										</span>
 										<span class="post-time">
-											{post.created ? new Date(post.created).toLocaleString('es-CL') : 'Sin fecha'}
+											{formatPostDate(post)}
 										</span>
 									</div>
 
