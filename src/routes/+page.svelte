@@ -299,10 +299,11 @@
 				// Cargar datos en el store
 				loadCsvData(result.data);
 
-				// IMPORTANTE: Actualizar filtros con el searchTerm para que el filtro derivado lo aplique correctamente
-				// BigQuery ya trajo un superconjunto, ahora el cliente aplica los operadores lógicos
+				// IMPORTANTE: NO volver a filtrar por searchTerm en el cliente
+				// BigQuery ya hizo el filtro (aunque sea aproximado), aplicarlo de nuevo eliminaría posts
+				// Solo actualizamos las fechas para que otros filtros (redes sociales) funcionen
 				updateFilters({
-					searchTerm: searchTerm || '',
+					searchTerm: '', // ← Vacío porque BigQuery ya filtró
 					dateFrom,
 					dateTo
 				});
