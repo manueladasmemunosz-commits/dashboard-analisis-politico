@@ -99,6 +99,13 @@
 		if (gran === 'hour') {
 			// Para hora: formato "YYYY-MM-DD HH"
 			const [dateStr, hourStr] = groupKey.split(' ');
+
+			// Validación defensiva: si no hay hourStr, usar '00'
+			if (!hourStr) {
+				console.warn('⚠️ groupKey sin hora:', groupKey);
+				return groupKey;
+			}
+
 			const dateObj = new Date(dateStr);
 			const hour = hourStr.padStart(2, '0');
 
@@ -410,9 +417,13 @@
 							if (postsForGroup.length > 0) {
 								if (granularity === 'hour') {
 									const [dateStr, hourStr] = clickedKey.split(' ');
-									const dateObj = new Date(dateStr);
-									const dayMonth = dateObj.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
-									selectedDate = `Posts publicados el ${dayMonth} a las ${hourStr}:00`;
+									if (hourStr) {
+										const dateObj = new Date(dateStr);
+										const dayMonth = dateObj.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+										selectedDate = `Posts publicados el ${dayMonth} a las ${hourStr}:00`;
+									} else {
+										selectedDate = formatLabel(clickedKey, granularity);
+									}
 								} else {
 									selectedDate = formatLabel(clickedKey, granularity);
 								}
@@ -439,6 +450,7 @@
 								// Para tooltip siempre mostrar fecha completa en granularidad hora
 								if (granularity === 'hour') {
 									const [dateStr, hourStr] = key.split(' ');
+									if (!hourStr) return key; // Validación defensiva
 									const dateObj = new Date(dateStr);
 									const dayMonth = dateObj.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
 									return `${dayMonth} ${hourStr}:00`;
