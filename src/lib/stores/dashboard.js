@@ -349,8 +349,22 @@ export function loadCsvData(data) {
 		- Porcentaje conservado: ${((stats.valid / data.length) * 100).toFixed(1)}%
 	`);
 
-	console.log(`✅ Cargando ${stats.valid} registros con información útil`);
-	rawData.set(validData);
+	// ELIMINAR DUPLICADOS por campo 'link' (igual que Colab)
+	// Usa Map para mantener solo el primer post con cada link único
+	const beforeDedup = validData.length;
+	const uniqueData = Array.from(
+		new Map(validData.map(item => [item.link, item])).values()
+	);
+	const duplicatesRemoved = beforeDedup - uniqueData.length;
+
+	console.log(`🔄 Eliminación de duplicados:
+		- Antes: ${beforeDedup} posts
+		- Duplicados eliminados: ${duplicatesRemoved}
+		- Únicos: ${uniqueData.length}
+	`);
+
+	console.log(`✅ Cargando ${uniqueData.length} registros únicos`);
+	rawData.set(uniqueData);
 }
 
 // Función para procesar texto y extraer palabras (para Word Cloud)
