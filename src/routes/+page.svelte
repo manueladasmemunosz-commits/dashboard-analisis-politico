@@ -159,11 +159,19 @@
 	}
 
 	// Reactividad para actualizar estadísticas
+	// OPTIMIZACIÓN: Usar un flag para evitar recalcular engagement innecesariamente
+	let lastRawDataLength = 0;
+
 	$: if ($rawData) {
 		totalPosts = $rawData.length;
-		totalEngagement = $rawData.reduce((sum, post) =>
-			sum + parseInt(post.likes || 0) + parseInt(post.replies || 0), 0
-		);
+
+		// Solo recalcular engagement si los datos cambiaron de tamaño
+		if ($rawData.length !== lastRawDataLength) {
+			totalEngagement = $rawData.reduce((sum, post) =>
+				sum + parseInt(post.likes || 0) + parseInt(post.replies || 0), 0
+			);
+			lastRawDataLength = $rawData.length;
+		}
 	}
 
 	$: if ($filteredData) {
@@ -171,6 +179,7 @@
 	}
 
 	// Filtrar datos del período B para modo comparativo
+	// OPTIMIZACIÓN: Solo calcular cuando comparativeEnabled === true
 	$: filteredDataB = timelineConfig.comparativeEnabled ?
 		$rawData.filter(post => {
 			const rawDate = post.created ? post.created.split(' ')[0] : null;

@@ -447,23 +447,10 @@ export function processWordCloudData(posts) {
 	});
 }
 
-// Pre-calcular datos para Word Cloud (ahora delegado al Worker)
-// Este derived solo activa el worker cuando cambian los datos filtrados
-export const wordCloudTrigger = derived(
-	[filteredData],
-	([$filteredData], set) => {
-		console.log('🔧 wordCloudTrigger ejecutado, filteredData.length:', $filteredData?.length);
-
-		if ($filteredData && $filteredData.length > 0) {
-			console.log('✅ Llamando processWordCloudData desde wordCloudTrigger');
-			processWordCloudData($filteredData);
-		} else {
-			console.log('⚠️ wordCloudTrigger: Sin datos filtrados');
-			wordCloudData.set({ words: [], wordPosts: {}, isProcessing: false, progress: 0 });
-		}
-		set(true);
-	}
-);
+// ELIMINADO: Pre-cálculo automático del Word Cloud
+// Anteriormente este derived procesaba automáticamente el word cloud en cada cambio de datos,
+// causando problemas de rendimiento con datasets grandes (36k+ posts).
+// Ahora el Word Cloud solo se procesa cuando el usuario hace click en "Cargar Word Cloud".
 
 export function updateFilters(newFilters) {
 	filters.update(current => ({ ...current, ...newFilters }));

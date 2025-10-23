@@ -160,17 +160,20 @@ export async function POST({ request }) {
 		const { diffDays } = validateDateRange(dateFrom, dateTo);
 
 		// Construir query segura
+		// IMPORTANTE: Usar DATE(created) para comparar solo la fecha, ignorando la hora
+		// Esto asegura que se incluyan todos los posts del día, no solo los de las 00:00:00
 		let baseQuery = `
 			SELECT * FROM \`${AUTHORIZED_TABLE}\`
-			WHERE created >= '${dateFrom}'
-			  AND created <= '${dateTo}'
+			WHERE DATE(created) >= '${dateFrom}'
+			  AND DATE(created) <= '${dateTo}'
 			  AND name_proyecto != '${EXCLUDED_PROJECT}'
 		`;
 
 		// Agregar término de búsqueda si existe
+		// IMPORTANTE: Usar LOWER() para búsqueda case-insensitive (como en Colab)
 		if (searchTerm && searchTerm.trim()) {
-			const safeSearchTerm = escapeSqlString(searchTerm.trim());
-			baseQuery += ` AND (text LIKE '%${safeSearchTerm}%' OR user_name LIKE '%${safeSearchTerm}%')`;
+			const safeSearchTerm = escapeSqlString(searchTerm.trim().toLowerCase());
+			baseQuery += ` AND (LOWER(text) LIKE '%${safeSearchTerm}%' OR LOWER(user_name) LIKE '%${safeSearchTerm}%')`;
 		}
 
 		// Ordenar por fecha descendente (sin límite de registros)

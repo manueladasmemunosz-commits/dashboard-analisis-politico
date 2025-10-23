@@ -27,6 +27,12 @@
 	let dateGroupsA = {};
 	let dateGroupsB = {};
 
+	// Variables para onClick handler (necesitan estar en component scope)
+	let sortedKeys = [];
+	let sortedKeysB = [];
+	let currentDateGroups = {};
+	let currentDateGroupsB = {};
+
 	// Verificar si es heatmap
 	$: isHeatmap = chartType === 'heatmap';
 
@@ -246,8 +252,8 @@
 			return posts.length; // 'posts' por defecto
 		}
 
-		let labels, chartData, sortedKeys, dateGroups;
-		let chartDataB, sortedKeysB, dateGroupsB_local;
+		let labels, chartData;
+		let chartDataB;
 
 		if (comparativeEnabled) {
 			// Modo comparativo: usar datos procesados por el worker
@@ -256,19 +262,19 @@
 			labels = aligned.labels;
 			chartData = aligned.dataA;
 			chartDataB = aligned.dataB;
+
+			// Asignar a variables de componente para onClick
 			sortedKeys = aligned.keysA;
 			sortedKeysB = aligned.keysB;
-			dateGroups = aligned.groupsA;
-			dateGroupsB = aligned.groupsB;
-
-			dateGroupsB_local = aligned.groupsB;
+			currentDateGroups = aligned.groupsA;
+			currentDateGroupsB = aligned.groupsB;
 
 			console.log(`📊 Períodos alineados: ${labels.length} puntos de comparación`);
 		} else {
 			// Modo normal: usar datos procesados por el worker
-			dateGroups = dateGroupsA;
+			currentDateGroups = dateGroupsA;
 
-			sortedKeys = Object.keys(dateGroups).sort();
+			sortedKeys = Object.keys(currentDateGroups).sort();
 			console.log('📊 Grupos procesados:', sortedKeys.slice(0, 5), '... total:', sortedKeys.length);
 
 			// Crear etiquetas según granularidad
@@ -278,7 +284,7 @@
 			});
 
 			// Calcular métrica según heatmapMetric
-			chartData = sortedKeys.map(key => calculateMetric(dateGroups[key]));
+			chartData = sortedKeys.map(key => calculateMetric(currentDateGroups[key]));
 		}
 
 		// Convertir 'area' y 'areaSmooth' a configuración 'line' correcta
@@ -381,11 +387,11 @@
 							// En modo comparativo, determinar qué período fue clickeado
 							if (datasetIndex === 0) {
 								clickedKey = sortedKeys[index];
-								postsForGroup = dateGroups[clickedKey] || [];
+								postsForGroup = currentDateGroups[clickedKey] || [];
 								period = 'A';
 							} else {
 								clickedKey = sortedKeysB[index];
-								postsForGroup = dateGroupsB[clickedKey] || [];
+								postsForGroup = currentDateGroupsB[clickedKey] || [];
 								period = 'B';
 							}
 
@@ -399,7 +405,7 @@
 						} else {
 							// Modo normal
 							clickedKey = sortedKeys[index];
-							postsForGroup = dateGroups[clickedKey] || [];
+							postsForGroup = currentDateGroups[clickedKey] || [];
 
 							if (postsForGroup.length > 0) {
 								if (granularity === 'hour') {
