@@ -35,17 +35,36 @@
 	async function loadProyectos() {
 		try {
 			loading = true;
+
+			// Intentar cargar desde localStorage primero (para Vercel)
+			if (typeof window !== 'undefined') {
+				const stored = localStorage.getItem('proyectos');
+				if (stored) {
+					allProyectos = JSON.parse(stored);
+					console.log('✅ Proyectos cargados desde localStorage:', allProyectos.length);
+					dispatch('proyectosUpdated', { proyectos: allProyectos });
+					loading = false;
+					return;
+				}
+			}
+
+			// Fallback: intentar API (para desarrollo local)
 			const response = await fetch('/api/proyectos');
 			if (response.ok) {
 				allProyectos = await response.json();
-				console.log('✅ Proyectos cargados en ProyectosView:', allProyectos.length);
-				// Notificar al padre que se recargaron los proyectos
+				console.log('✅ Proyectos cargados desde API:', allProyectos.length);
+				// Guardar en localStorage
+				if (typeof window !== 'undefined') {
+					localStorage.setItem('proyectos', JSON.stringify(allProyectos));
+				}
 				dispatch('proyectosUpdated', { proyectos: allProyectos });
 			} else {
-				console.error('❌ Error cargando proyectos:', response.statusText);
+				console.log('⚠️ API no disponible, usando localStorage vacío');
+				allProyectos = [];
 			}
 		} catch (error) {
-			console.error('❌ Error:', error);
+			console.log('⚠️ API no disponible:', error.message);
+			allProyectos = [];
 		} finally {
 			loading = false;
 		}
@@ -114,39 +133,40 @@
 				return;
 			}
 
-			if (editingProyecto) {
-				// Actualizar
-				const response = await fetch('/api/proyectos', {
-					method: 'PUT',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(formData)
-				});
+			// Generar ID si no existe
+			if (!formData.id) {
+				formData.id = formData.nombre.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+			}
 
-				if (response.ok) {
-					console.log('✅ Proyecto actualizado');
-					await loadProyectos();
-					showModal = false;
-				} else {
-					const error = await response.json();
-					alert('❌ Error: ' + error.error);
+			if (editingProyecto) {
+				// Actualizar proyecto existente
+				const index = allProyectos.findIndex(p => p.id === formData.id);
+				if (index !== -1) {
+					formData.updatedAt = new Date().toISOString();
+					allProyectos[index] = { ...formData };
 				}
 			} else {
-				// Crear nuevo
-				const response = await fetch('/api/proyectos', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(formData)
-				});
+				// Crear nuevo proyecto
+				formData.createdAt = new Date().toISOString();
 
-				if (response.ok) {
-					console.log('✅ Proyecto creado');
-					await loadProyectos();
-					showModal = false;
-				} else {
-					const error = await response.json();
-					alert('❌ Error: ' + error.error);
+				// Verificar que no exista
+				if (allProyectos.find(p => p.id === formData.id)) {
+					alert('❌ Ya existe un proyecto con ese nombre');
+					loading = false;
+					return;
 				}
+
+				allProyectos = [...allProyectos, { ...formData }];
 			}
+
+			// Guardar en localStorage
+			if (typeof window !== 'undefined') {
+				localStorage.setItem('proyectos', JSON.stringify(allProyectos));
+			}
+
+			console.log('✅ Proyecto guardado en localStorage');
+			dispatch('proyectosUpdated', { proyectos: allProyectos });
+			showModal = false;
 		} catch (error) {
 			console.error('❌ Error guardando proyecto:', error);
 			alert('❌ Error al guardar proyecto');
@@ -163,19 +183,17 @@
 
 		try {
 			loading = true;
-			const response = await fetch('/api/proyectos', {
-				method: 'DELETE',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ id: proyecto.id })
-			});
 
-			if (response.ok) {
-				console.log('✅ Proyecto eliminado');
-				await loadProyectos();
-			} else {
-				const error = await response.json();
-				alert('❌ Error: ' + error.error);
+			// Eliminar del array
+			allProyectos = allProyectos.filter(p => p.id !== proyecto.id);
+
+			// Guardar en localStorage
+			if (typeof window !== 'undefined') {
+				localStorage.setItem('proyectos', JSON.stringify(allProyectos));
 			}
+
+			console.log('✅ Proyecto eliminado de localStorage');
+			dispatch('proyectosUpdated', { proyectos: allProyectos });
 		} catch (error) {
 			console.error('❌ Error eliminando proyecto:', error);
 			alert('❌ Error al eliminar proyecto');
