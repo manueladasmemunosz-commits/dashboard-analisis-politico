@@ -6,5 +6,13 @@ export default defineConfig({
 	server: {
 		port: 3000,
 		host: true
+	},
+	optimizeDeps: {
+		include: [
+			'd3',
+			'd3-cloud',
+			'chart.js',
+			'papaparse'
+		]
 	}
 });

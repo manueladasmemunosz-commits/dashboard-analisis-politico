@@ -6,8 +6,12 @@
 	const dispatch = createEventDispatcher();
 
 	let searchTerm = '';
-	let dateFrom = '2025-08-01';
-	let dateTo = new Date().toISOString().split('T')[0];
+	let activeTab = 'main';
+
+	// Calcular fechas dinámicamente - Por defecto solo el día actual
+	const today = new Date();
+	let dateFrom = today.toISOString().split('T')[0];
+	let dateTo = today.toISOString().split('T')[0];
 	let showHelpModal = false;
 
 	function handleSearch() {
@@ -22,6 +26,27 @@
 			dispatch('csvUpload', { file });
 		} else {
 			console.log('❌ No se seleccionó ningún archivo');
+		}
+	}
+
+	function handleTabClick(tab) {
+		activeTab = tab;
+		console.log('🔀 Cambiando a pestaña:', tab);
+		dispatch('tabChange', { tab });
+
+		// Scroll suave a la sección correspondiente
+		const sectionMap = {
+			'main': 'main-section',
+			'proyectos': 'proyectos-section',
+			'comparacion': 'project-comparison-section'
+		};
+
+		const sectionId = sectionMap[tab];
+		if (sectionId) {
+			const element = document.getElementById(sectionId);
+			if (element) {
+				element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			}
 		}
 	}
 </script>
@@ -119,21 +144,26 @@
 
 	<div class="header-tabs">
 		<nav class="nav-tabs">
-			<button class="nav-tab active" data-section="main">
+			<button
+				class="nav-tab {activeTab === 'main' ? 'active' : ''}"
+				on:click={() => handleTabClick('main')}
+			>
 				<span class="tab-icon">📊</span>
 				Principal
 			</button>
-			<button class="nav-tab" data-section="engagement">
-				<span class="tab-icon">💬</span>
-				Engagement
+			<button
+				class="nav-tab {activeTab === 'proyectos' ? 'active' : ''}"
+				on:click={() => handleTabClick('proyectos')}
+			>
+				<span class="tab-icon">📁</span>
+				Proyectos
 			</button>
-			<button class="nav-tab" data-section="network">
-				<span class="tab-icon">🕸️</span>
-				Redes
-			</button>
-			<button class="nav-tab" data-section="wordcloud">
-				<span class="tab-icon">☁️</span>
-				WordCloud
+			<button
+				class="nav-tab {activeTab === 'comparacion' ? 'active' : ''}"
+				on:click={() => handleTabClick('comparacion')}
+			>
+				<span class="tab-icon">🔄</span>
+				Comparación
 			</button>
 		</nav>
 	</div>

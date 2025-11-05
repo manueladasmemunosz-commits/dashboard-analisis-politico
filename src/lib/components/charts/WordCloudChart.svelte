@@ -1,7 +1,7 @@
 <script>
 	import { onMount, tick } from 'svelte';
 	import cloud from 'd3-cloud';
-	import { select, scaleOrdinal, scaleSqrt, min, max } from 'd3';
+	import { select, scaleOrdinal, scalePow, min, max } from 'd3';
 	import PostDetailsModal from '$lib/components/PostDetailsModal.svelte';
 	import { wordCloudData } from '$lib/stores/dashboard.js';
 
@@ -157,12 +157,13 @@
 
 			console.log(`☁️ Canvas dimensions: ${width}x${height}`);
 
-			// Escala de tamaños usando raíz cuadrada (tamaño mínimo aumentado para mejor legibilidad)
+			// Escala de tamaños usando escala potencial para mayor diferenciación visual
 			const minCount = min(wordData, d => d.count);
 			const maxCount = max(wordData, d => d.count);
-			const fontSizeScale = scaleSqrt()
+			const fontSizeScale = scalePow()
+				.exponent(0.6) // Entre raíz cuadrada y lineal - balance entre diferenciación y legibilidad
 				.domain([minCount, maxCount])
-				.range([22, 70])
+				.range([14, 85]) // Mayor rango para más contraste visual (71px de diferencia)
 				.clamp(true);
 
 			// Obtener paleta de colores seleccionada
@@ -430,7 +431,7 @@
 				</span>
 			{/each}
 			<span class="legend-hint">
-				Layout rectangular • Fuente Impact (22-70px) •
+				Layout rectangular • Fuente Impact (14-85px) • Escala potencial •
 				{limit < 50 ? 'Solo horizontales' : 'Rotaciones mixtas'}
 			</span>
 		</div>

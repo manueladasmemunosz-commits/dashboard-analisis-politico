@@ -82,6 +82,15 @@
 
 		const isHorizontal = chartType === 'horizontalBar' || chartType === 'bar';
 
+		// Ajustar altura del canvas dinámicamente para gráficos horizontales
+		// Cada barra necesita ~30px de altura para que las etiquetas se vean bien
+		if (isHorizontal) {
+			const minHeight = Math.max(400, sortedHashtags.length * 30);
+			canvas.style.height = `${minHeight}px`;
+		} else {
+			canvas.style.height = '400px';
+		}
+
 		chartInstance = new Chart(ctx, {
 			type: chartType === 'horizontalBar' ? 'bar' : chartType,
 			data: {
@@ -136,15 +145,25 @@
 					x: {
 						beginAtZero: true,
 						title: {
-							display: !isHorizontal,
-							text: 'Hashtag'
+							display: isHorizontal,
+							text: 'Frecuencia'
+						},
+						ticks: {
+							autoSkip: false,
+							maxRotation: isHorizontal ? 0 : 45,
+							minRotation: isHorizontal ? 0 : 45
 						}
 					},
 					y: {
 						beginAtZero: true,
 						title: {
-							display: isHorizontal,
+							display: !isHorizontal,
 							text: 'Frecuencia'
+						},
+						ticks: {
+							autoSkip: false,
+							crossAlign: 'far',
+							padding: 5
 						}
 					}
 				}
@@ -241,12 +260,14 @@
 	.hashtags-container {
 		position: relative;
 		cursor: pointer;
+		max-height: 600px;
+		overflow-y: auto;
+		overflow-x: hidden;
 	}
 
 	.chart-canvas {
 		width: 100% !important;
-		height: 400px !important;
-		max-height: 400px;
+		min-height: 400px;
 		cursor: pointer;
 	}
 
@@ -326,5 +347,24 @@
 		height: 100%;
 		background-color: #9b59b6;
 		transition: width 0.3s ease;
+	}
+
+	/* Scrollbar styling para el contenedor */
+	.hashtags-container::-webkit-scrollbar {
+		width: 8px;
+	}
+
+	.hashtags-container::-webkit-scrollbar-track {
+		background: #f1f1f1;
+		border-radius: 4px;
+	}
+
+	.hashtags-container::-webkit-scrollbar-thumb {
+		background: #888;
+		border-radius: 4px;
+	}
+
+	.hashtags-container::-webkit-scrollbar-thumb:hover {
+		background: #555;
 	}
 </style>

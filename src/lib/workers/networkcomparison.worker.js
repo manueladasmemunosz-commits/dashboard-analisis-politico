@@ -48,10 +48,30 @@ function calculateMetric(posts, metricType) {
 // Función para agrupar por fecha
 function getGroupKey(dateStr, timeStr, granularity) {
 	if (granularity === 'hour') {
+		// IMPORTANTE: BigQuery devuelve timestamps en UTC, necesitamos convertir a hora de Chile
 		if (!timeStr) return null;
-		const hour = parseInt(timeStr.split(':')[0]);
-		if (isNaN(hour) || hour < 0 || hour > 23) return null;
-		return `${dateStr} ${hour.toString().padStart(2, '0')}`;
+
+		// Parsear como UTC agregando 'Z' al final
+		const utcDateTimeStr = `${dateStr}T${timeStr}Z`;
+		const date = new Date(utcDateTimeStr);
+
+		if (isNaN(date.getTime())) return null;
+
+		// Convertir a hora de Chile (America/Santiago)
+		const chileTimeStr = date.toLocaleString('en-CA', {
+			timeZone: 'America/Santiago',
+			year: 'numeric',
+			month: '2-digit',
+			day: '2-digit',
+			hour: '2-digit',
+			hour12: false
+		});
+
+		// Extraer fecha y hora en formato "YYYY-MM-DD HH"
+		const match = chileTimeStr.match(/(\d{4}-\d{2}-\d{2}),?\s*(\d{2})/);
+		if (!match) return null;
+
+		return `${match[1]} ${match[2]}`;
 	}
 
 	const date = new Date(dateStr);

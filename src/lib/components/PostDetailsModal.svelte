@@ -19,19 +19,36 @@
 	}
 
 	// Formatear fecha según el tipo de fuente
-	// Las noticias tienen hora de scraping (03:00 AM), sumamos 9 horas para ajustar a horario real (~12:00)
 	function formatPostDate(post) {
 		if (!post.created) return 'Sin fecha';
 
-		let date = new Date(post.created);
+		// IMPORTANTE: BigQuery devuelve fechas en UTC como string sin zona horaria
+		// Ejemplo: "2025-11-04 17:14:26" es UTC, no hora local
+		// Necesitamos parsear explícitamente como UTC para evitar conversiones incorrectas
 
-		// Si es noticia, sumar 9 horas para ajustar de 03:00 → 12:00
-		if (post.source === 'news') {
-			date = new Date(date.getTime() + (9 * 60 * 60 * 1000)); // +9 horas en milisegundos
+		let dateString = post.created;
+
+		// Reemplazar espacio con 'T' y agregar 'Z' para indicar UTC
+		// "2025-11-04 17:14:26" → "2025-11-04T17:14:26Z"
+		if (!dateString.includes('T')) {
+			dateString = dateString.replace(' ', 'T') + 'Z';
 		}
 
-		// Mostrar fecha + hora para todas las fuentes
-		return date.toLocaleString('es-CL');
+		let date = new Date(dateString);
+
+		// Mostrar fecha + hora en zona horaria de Chile (America/Santiago)
+		// NOTA: Las noticias muestran la hora del scraper (generalmente ~00:00 Chile)
+		// ya que la mayoría de medios no publican la hora exacta de la noticia
+		return date.toLocaleString('es-CL', {
+			timeZone: 'America/Santiago',
+			year: 'numeric',
+			month: '2-digit',
+			day: '2-digit',
+			hour: '2-digit',
+			minute: '2-digit',
+			second: '2-digit',
+			hour12: false
+		});
 	}
 
 	// Agrupar posts por usuario

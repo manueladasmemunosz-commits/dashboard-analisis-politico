@@ -7,7 +7,7 @@
  * 2. Tabla específica autorizada
  * 3. Escape de SQL injection
  * 4. Rango de fechas obligatorio y limitado (máx 2 años)
- * 5. Límite alto de resultados para evitar queries masivas
+ * 5. Límite de 200,000 resultados para balance entre datos y rendimiento
  */
 
 // Cargar variables de entorno
@@ -159,18 +159,29 @@ export async function POST({ request }) {
 		// Validar rango de fechas
 		const { diffDays } = validateDateRange(dateFrom, dateTo);
 
-		// Construir query segura
-		// IMPORTANTE: Para incluir TODO el día final, usamos < día_siguiente
-		// Ejemplo: dateTo='2025-10-23' debe incluir hasta 2025-10-23 23:59:59
-		// Por eso usamos created < '2025-10-24' en lugar de created <= '2025-10-23'
-		const dateToNextDay = new Date(dateTo);
-		dateToNextDay.setDate(dateToNextDay.getDate() + 1);
-		const dateToInclusive = dateToNextDay.toISOString().split('T')[0];
+		// IMPORTANTE: El usuario ingresa fechas en hora de Chile, pero BigQuery almacena en UTC
+		// Necesitamos convertir las fechas de Chile a UTC para la consulta
+		// Chile está en UTC-3 (horario de verano) o UTC-4 (horario estándar)
+		// Para asegurar que incluimos TODO el día en Chile:
+		// - Inicio: 2025-11-04 00:00 Chile → restar offset de Chile
+		// - Fin: 2025-11-05 00:00 Chile → restar offset de Chile
+
+		// Crear fechas en zona horaria de Chile
+		const dateFromChile = new Date(`${dateFrom}T00:00:00-03:00`); // Chile UTC-3
+		const dateToChile = new Date(`${dateTo}T23:59:59-03:00`);
+
+		// Convertir a UTC para la query
+		const dateFromUTC = dateFromChile.toISOString().split('.')[0].replace('T', ' ');
+		const dateToUTC = dateToChile.toISOString().split('.')[0].replace('T', ' ');
+
+		console.log('📅 Conversión de fechas:');
+		console.log(`   Chile: ${dateFrom} 00:00 → UTC: ${dateFromUTC}`);
+		console.log(`   Chile: ${dateTo} 23:59 → UTC: ${dateToUTC}`);
 
 		let baseQuery = `
 			SELECT * FROM \`${AUTHORIZED_TABLE}\`
-			WHERE created >= '${dateFrom}'
-			  AND created < '${dateToInclusive}'
+			WHERE created >= '${dateFromUTC}'
+			  AND created <= '${dateToUTC}'
 			  AND name_proyecto != '${EXCLUDED_PROJECT}'
 		`;
 
@@ -202,8 +213,9 @@ export async function POST({ request }) {
 			}
 		}
 
-		// Ordenar por fecha descendente (sin límite de registros)
-		baseQuery += ` ORDER BY created DESC`;
+		// Limitar a 250,000 registros para balance entre datos y rendimiento
+		// Sin ORDER BY para obtener una muestra representativa de todo el rango de fechas
+		baseQuery += ` LIMIT 250000`;
 
 		// VALIDAR QUERY ANTES DE EJECUTAR
 		validateQuerySecurity(baseQuery);
@@ -264,7 +276,7 @@ export async function GET() {
 			authorizedTable: AUTHORIZED_TABLE,
 			maxRangeDays: MAX_RANGE_DAYS,
 			excludedProject: EXCLUDED_PROJECT,
-			noResultLimit: true
+			resultLimit: 250000
 		}
 	});
 }

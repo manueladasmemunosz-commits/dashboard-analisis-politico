@@ -202,11 +202,15 @@ export const filteredData = derived(
 		let afterDates = originalCount;
 		let afterNetworks = originalCount;
 
-		// Filtro por término de búsqueda con operadores lógicos
-		if ($filters.searchTerm) {
-			filtered = filtered.filter(post => applySearchFilter(post, $filters.searchTerm));
-			afterSearchTerm = filtered.length;
-		}
+		// ⚠️ IMPORTANTE: NO aplicamos filtro por searchTerm en el cliente
+		// Razón: BigQuery ya filtró los datos con el searchTerm antes de enviarlos
+		// Aplicar el filtro nuevamente causaría "doble filtrado" y limitaría los datos
+		// El searchTerm se mantiene en $filters solo como referencia/metadata de qué se buscó
+// 		// Filtro por término de búsqueda con operadores lógicos
+// 		if ($filters.searchTerm) {
+// 			filtered = filtered.filter(post => applySearchFilter(post, $filters.searchTerm));
+// 			afterSearchTerm = filtered.length;
+// 		}
 
 		// Filtro por fechas (mejorado para manejar datos corruptos)
 		if ($filters.dateFrom && $filters.dateTo) {
@@ -299,15 +303,15 @@ export const filteredData = derived(
 
 		// Log detallado para debugging del filtrado
 		if (originalCount > 0 && filtered.length !== originalCount) {
-			const searchRemoved = originalCount - afterSearchTerm;
-			const datesRemoved = afterSearchTerm - afterDates;
+			// Nota: searchTerm NO se aplica en cliente (BigQuery ya filtró)
+			const datesRemoved = originalCount - afterDates;
 			const networksRemoved = afterDates - afterNetworks;
 
 			console.log(`🔍 DEBUG FILTRADO DETALLADO:`);
-			console.log(`  📊 Original: ${originalCount} posts`);
-			if ($filters.searchTerm) {
-				console.log(`  🔤 Después searchTerm "${$filters.searchTerm}": ${afterSearchTerm} (eliminados: ${searchRemoved})`);
-			}
+			console.log(`  📊 Original: ${originalCount} posts (ya filtrados por BigQuery con searchTerm: "${$filters.searchTerm || 'ninguno'}")`);
+// 			if ($filters.searchTerm) {
+// 				console.log(`  🔤 Después searchTerm "${$filters.searchTerm}": ${afterSearchTerm} (eliminados: ${searchRemoved})`);
+// 			}
 			if ($filters.dateFrom && $filters.dateTo) {
 				console.log(`  📅 Después fechas (${$filters.dateFrom} a ${$filters.dateTo}): ${afterDates} (eliminados: ${datesRemoved})`);
 			}

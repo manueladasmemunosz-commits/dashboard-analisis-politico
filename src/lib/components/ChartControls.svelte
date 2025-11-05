@@ -1,5 +1,5 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, onMount } from 'svelte';
 
 	export const chartName = '';
 	export let chartType = 'line';
@@ -10,7 +10,7 @@
 	export let limit = 10;
 	export let granularity = 'day';
 	export let heatmapMetric = 'posts'; // Para heatmap: 'posts' o 'engagement'
-	export let colorPalette = 'chilean';
+	export let colorPalette = 'extended'; // Paleta extendida con 40 colores por defecto
 	export let visualizationMode = 'likes-vs-replies'; // Para engagement scatter
 	export let showDateControls = true;
 	export let showSocialControls = true;
@@ -21,6 +21,38 @@
 	export let showColorPaletteControls = false;
 	export let showVisualizationModeControls = false; // Para engagement scatter
 	export let chartTypes = ['line', 'bar', 'area'];
+
+	// Proyectos
+	let proyectos = [];
+	let selectedProyectoId = '';
+
+	// Cargar proyectos al montar
+	onMount(async () => {
+		await loadProyectos();
+	});
+
+	async function loadProyectos() {
+		try {
+			const response = await fetch('/api/proyectos');
+			if (response.ok) {
+				proyectos = await response.json();
+			}
+		} catch (error) {
+			console.error('❌ Error cargando proyectos:', error);
+		}
+	}
+
+	function handleProyectoChange() {
+		if (selectedProyectoId) {
+			const proyecto = proyectos.find(p => p.id === selectedProyectoId);
+			if (proyecto) {
+				// IMPORTANTE: NO sobrescribir las fechas del gráfico
+				// El ChartWidget se encargará de pasar las fechas actuales del gráfico al padre
+				dispatch('proyectoApplied', { proyecto });
+				console.log('📁 Proyecto aplicado desde selector:', proyecto.nombre);
+			}
+		}
+	}
 
 	// Estado de modo comparativo
 	export let comparativeEnabled = false;
@@ -199,6 +231,35 @@
 </script>
 
 <div class="widget-controls-vertical">
+	<!-- Selector de Proyectos -->
+	{#if proyectos.length > 0}
+		<div class="control-group">
+			<span class="control-label">📁 Aplicar Proyecto</span>
+			<select
+				class="chart-control-select proyecto-select"
+				bind:value={selectedProyectoId}
+				on:change={handleProyectoChange}
+			>
+				<option value="">-- Seleccionar proyecto --</option>
+				{#each proyectos as proyecto}
+					<option value={proyecto.id}>
+						{proyecto.nombre}
+					</option>
+				{/each}
+			</select>
+			{#if selectedProyectoId}
+				{#each proyectos.filter(p => p.id === selectedProyectoId) as proyecto}
+					<div class="proyecto-info">
+						<div class="proyecto-badge" style="border-left-color: {proyecto.color}">
+							<span>🔍 {proyecto.query.searchTerm}</span>
+							<span class="proyecto-dates">📅 {proyecto.query.dateFrom} → {proyecto.query.dateTo}</span>
+						</div>
+					</div>
+				{/each}
+			{/if}
+		</div>
+	{/if}
+
 	<!-- Botón de actualizar al principio -->
 	<div class="control-group">
 		<button
@@ -303,6 +364,7 @@
 				bind:value={colorPalette}
 				on:change={handleColorPaletteChange}
 			>
+			<option value="extended">🎨 Extendida (40 colores)</option>
 				<option value="chilean">🇨🇱 Chilena</option>
 				<option value="vibrant">🌈 Vibrante</option>
 				<option value="pastel">🎀 Pastel</option>
@@ -536,3 +598,41 @@
 		</div>
 	{/if}
 </div>
+
+<style>
+	.proyecto-select {
+		background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+		border: 2px solid #3498db;
+		font-weight: 600;
+	}
+
+	.proyecto-select:hover {
+		border-color: #2980b9;
+		box-shadow: 0 2px 8px rgba(52, 152, 219, 0.2);
+	}
+
+	.proyecto-info {
+		margin-top: 0.75rem;
+	}
+
+	.proyecto-badge {
+		background: #f8f9fa;
+		padding: 0.75rem;
+		border-radius: 6px;
+		border-left: 4px solid #3498db;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		font-size: 0.85rem;
+	}
+
+	.proyecto-badge span {
+		display: block;
+		color: #2c3e50;
+	}
+
+	.proyecto-dates {
+		color: #7f8c8d !important;
+		font-size: 0.8rem;
+	}
+</style>

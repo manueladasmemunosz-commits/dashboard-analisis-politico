@@ -78,6 +78,7 @@ self.onmessage = function(e) {
 
 	if (useHourly) {
 		// Agrupar por fecha Y hora
+		// IMPORTANTE: BigQuery devuelve timestamps en UTC, necesitamos convertir a hora de Chile
 		const hourGroups = {};
 
 		posts.forEach(post => {
@@ -90,12 +91,27 @@ self.onmessage = function(e) {
 			if (!/^\d{4}[-/]\d{2}[-/]\d{2}$/.test(dateStr)) return;
 			if (!timeStr) return;
 
-			const date = dateStr.replace(/\//g, '-');
-			const hour = parseInt(timeStr.split(':')[0]);
+			// Parsear como UTC agregando 'Z' al final
+			const utcDateTimeStr = `${dateStr}T${timeStr}Z`;
+			const date = new Date(utcDateTimeStr);
 
-			if (isNaN(hour) || hour < 0 || hour > 23) return;
+			if (isNaN(date.getTime())) return;
 
-			const key = `${date}-${hour.toString().padStart(2, '0')}`;
+			// Convertir a hora de Chile (America/Santiago)
+			const chileTimeStr = date.toLocaleString('en-CA', {
+				timeZone: 'America/Santiago',
+				year: 'numeric',
+				month: '2-digit',
+				day: '2-digit',
+				hour: '2-digit',
+				hour12: false
+			});
+
+			// Extraer fecha y hora en formato "YYYY-MM-DD-HH"
+			const match = chileTimeStr.match(/(\d{4}-\d{2}-\d{2}),?\s*(\d{2})/);
+			if (!match) return;
+
+			const key = `${match[1]}-${match[2]}`;
 
 			if (!hourGroups[key]) {
 				hourGroups[key] = [];

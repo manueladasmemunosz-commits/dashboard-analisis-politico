@@ -24,15 +24,28 @@
 	export let dateFromB = '2025-01-01';
 	export let dateToB = '2025-12-12';
 
+	import { createEventDispatcher } from 'svelte';
 	import ChartControls from './ChartControls.svelte';
 	import { updateChartConfig, updateFilters } from '$lib/stores/dashboard.js';
 	import './widget-styles.css';
+
+	const dispatch = createEventDispatcher();
 
 	function handleDateChange(event) {
 		const { dateFrom: newDateFrom, dateTo: newDateTo } = event.detail;
 		dateFrom = newDateFrom;
 		dateTo = newDateTo;
 		updateChartConfig(chartName, { dateFrom, dateTo });
+
+		// NUEVO: Disparar evento para que el padre (page.svelte) consulte BigQuery con las nuevas fechas
+		// Esto permite que al cambiar fechas en los controles del gráfico se traigan nuevos datos
+		dispatch('dateRangeChanged', {
+			dateFrom: newDateFrom,
+			dateTo: newDateTo,
+			chartName
+		});
+
+		console.log(`📅 ${chartName}: Fechas cambiadas a ${newDateFrom} - ${newDateTo}, solicitando nuevos datos de BigQuery`);
 	}
 
 	function handleTypeChange(event) {
@@ -46,6 +59,9 @@
 		socialNetwork = newSocialNetwork;
 		selectedNetworks = newSelectedNetworks;
 		updateChartConfig(chartName, { socialNetwork, selectedNetworks });
+
+		// IMPORTANTE: Actualizar filtros globales para que filteredData se recalcule
+		updateFilters({ socialNetwork: newSocialNetwork, selectedNetworks: newSelectedNetworks });
 	}
 
 	function handleLimitChange(event) {
@@ -88,6 +104,30 @@
 		const { visualizationMode: newVisualizationMode } = event.detail;
 		visualizationMode = newVisualizationMode;
 		updateChartConfig(chartName, { visualizationMode });
+	}
+
+	function handleProyectoApplied(event) {
+		const { proyecto } = event.detail;
+		console.log(`📁 Proyecto aplicado a ${chartName}:`, proyecto.nombre);
+		console.log(`📅 Fechas del gráfico ${chartName} ANTES:`, { dateFrom, dateTo });
+		console.log(`📅 Fechas del proyecto:`, {
+			dateFrom: proyecto.query.dateFrom,
+			dateTo: proyecto.query.dateTo
+		});
+
+		// IMPORTANTE: Mantener las fechas actuales del gráfico, solo aplicar el searchTerm del proyecto
+		// Esto permite que cada gráfico mantenga su propio rango de fechas personalizado
+		dispatch('proyectoApplied', {
+			proyecto,
+			// Pasar las fechas actuales del gráfico para que el padre las use en la búsqueda
+			currentDateFrom: dateFrom,
+			currentDateTo: dateTo
+		});
+
+		console.log(`📅 Despachando evento con fechas del gráfico:`, {
+			currentDateFrom: dateFrom,
+			currentDateTo: dateTo
+		});
 	}
 
 	function handleRefresh(event) {
@@ -256,6 +296,7 @@
 				on:visualizationModeChange={handleVisualizationModeChange}
 				on:comparativeToggle={handleComparativeToggle}
 				on:comparativeDatesChange={handleComparativeDatesChange}
+				on:proyectoApplied={handleProyectoApplied}
 				on:refresh={handleRefresh}
 			/>
 		</div>

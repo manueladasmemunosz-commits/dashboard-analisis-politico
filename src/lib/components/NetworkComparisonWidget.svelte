@@ -36,10 +36,15 @@
 			chartType = 'bar';
 			console.log('📊 Modo temporal desactivado: cambiando a gráfico de barras');
 		}
+
+		// Auto-actualizar gráfico
+		refreshKey++;
 	}
 
 	function handleGranularityChange(event) {
 		granularity = event.detail.granularity;
+		// Auto-actualizar gráfico
+		refreshKey++;
 	}
 
 	function handleRefresh(event) {

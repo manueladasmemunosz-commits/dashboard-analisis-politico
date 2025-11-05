@@ -12,6 +12,28 @@ Dashboard interactivo para análisis de redes sociales y noticias políticas, co
 
 Sistema de análisis en tiempo real de contenido político en redes sociales (Twitter, Instagram) y medios de comunicación. Permite búsquedas avanzadas con operadores lógicos, visualización de líneas de tiempo de actividad, análisis de engagement, y generación de nubes de palabras.
 
+---
+
+## 📸 Screenshots
+
+### Dashboard Principal
+![Dashboard Principal](docs/screenshots/main-dashboard.png)
+*Vista principal con gráficos interactivos de timeline, top posts y análisis de engagement*
+
+### Búsqueda Avanzada
+![Búsqueda Avanzada](docs/screenshots/advanced-search.png)
+*Modal de ayuda mostrando operadores lógicos y ejemplos de búsqueda*
+
+### Comparación de Proyectos
+![Comparación de Proyectos](docs/screenshots/project-comparison.png)
+*Vista de comparación de múltiples proyectos con métricas lado a lado*
+
+### Estado de Carga
+![Estado de Carga](docs/screenshots/loading-state.png)
+*Indicador de progreso mejorado mostrando pasos del proceso*
+
+> **Nota**: Para agregar tus propios screenshots, guarda las imágenes en la carpeta `docs/screenshots/` y reemplaza los nombres de archivo arriba.
+
 ### Características Principales
 
 - 🔍 **Búsqueda Avanzada**: Operadores lógicos (AND, OR, NOT), búsqueda de frases exactas, wildcards

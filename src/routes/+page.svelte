@@ -13,30 +13,36 @@
 	import PerformanceChart from '$lib/components/charts/PerformanceChart.svelte';
 	import MentionsChart from '$lib/components/charts/MentionsChart.svelte';
 	import NetworkComparisonWidget from '$lib/components/NetworkComparisonWidget.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
+	import ProyectosView from '$lib/components/ProyectosView.svelte';
+	import ProjectComparisonView from '$lib/components/ProjectComparisonView.svelte';
 	import Papa from 'papaparse';
 
 	let totalPosts = 0;
 	let filteredPosts = 0;
 	let totalEngagement = 0;
 
+	// Fecha actual para inicializar configuraciones
+	const today = new Date().toISOString().split('T')[0];
+
 	// Estado de configuraciones de gráficos
 	let timelineConfig = {
 		type: 'line',
-		dateFrom: '2025-01-01',
-		dateTo: '2025-12-12',
+		dateFrom: today,
+		dateTo: today,
 		socialNetwork: 'all',
 		granularity: 'day',
 		heatmapMetric: 'posts', // 'posts' o 'engagement'
 		comparativeEnabled: false,
-		dateFromB: '2025-01-01',
-		dateToB: '2025-12-12'
+		dateFromB: today,
+		dateToB: today
 	};
 
 	let topPostsConfig = {
 		type: 'bar',
 		limit: 10,
-		dateFrom: '2025-01-01',
-		dateTo: '2025-12-12',
+		dateFrom: today,
+		dateTo: today,
 		socialNetwork: 'all',
 		selectedNetworks: ['all']
 	};
@@ -44,18 +50,18 @@
 	let activeUsersConfig = {
 		type: 'doughnut',
 		limit: 10,
-		dateFrom: '2025-01-01',
-		dateTo: '2025-12-12',
+		dateFrom: today,
+		dateTo: today,
 		socialNetwork: 'all',
 		selectedNetworks: ['all'],
-		colorPalette: 'chilean',
+		colorPalette: 'extended', // Paleta extendida con 40 colores para evitar repeticiones
 		metric: 'posts'
 	};
 
 	let engagementScatterConfig = {
 		type: 'scatter',
-		dateFrom: '2025-01-01',
-		dateTo: '2025-12-12',
+		dateFrom: today,
+		dateTo: today,
 		socialNetwork: 'all',
 		selectedNetworks: ['all'],
 		visualizationMode: 'likes-vs-replies'
@@ -64,24 +70,24 @@
 	let hashtagsConfig = {
 		type: 'bar',
 		limit: 20,
-		dateFrom: '2025-01-01',
-		dateTo: '2025-12-12',
+		dateFrom: today,
+		dateTo: today,
 		socialNetwork: 'all',
 		selectedNetworks: ['all']
 	};
 
 	let sentimentConfig = {
 		type: 'doughnut',
-		dateFrom: '2025-01-01',
-		dateTo: '2025-12-12',
+		dateFrom: today,
+		dateTo: today,
 		socialNetwork: 'all',
 		selectedNetworks: ['all']
 	};
 
 	let performanceConfig = {
 		type: 'line',
-		dateFrom: '2025-01-01',
-		dateTo: '2025-12-12',
+		dateFrom: today,
+		dateTo: today,
 		socialNetwork: 'all',
 		selectedNetworks: ['all']
 	};
@@ -89,8 +95,8 @@
 	let mentionsConfig = {
 		type: 'bar',
 		limit: 20,
-		dateFrom: '2025-01-01',
-		dateTo: '2025-12-12',
+		dateFrom: today,
+		dateTo: today,
 		socialNetwork: 'all',
 		selectedNetworks: ['all']
 	};
@@ -98,8 +104,8 @@
 
 	let wordCloudConfig = {
 		limit: 80,  // Default 80 palabras para nube muy densa y compacta
-		dateFrom: '2025-01-01',
-		dateTo: '2025-12-12',
+		dateFrom: today,
+		dateTo: today,
 		socialNetwork: 'all',
 		selectedNetworks: ['all']
 	};
@@ -129,6 +135,24 @@
 	function enableChart(chartName) {
 		chartLoadingStates[chartName] = true;
 		chartLoadingStates = chartLoadingStates; // Trigger reactivity
+	}
+
+	// Estado de loading de BigQuery
+	let isLoadingBigQuery = false;
+	let loadingStep = 1;
+	let loadingStepText = '';
+
+	// Estado para proyectos
+	let allProyectos = [];
+	let selectedProyectoIds = [];
+	let comparisonData = [];
+
+	// Estado de pestaña activa
+	let activeTab = 'main';
+
+	function handleTabChange(event) {
+		activeTab = event.detail.tab;
+		console.log('📑 Pestaña activa:', activeTab);
 	}
 
 	// Acción de Svelte para Intersection Observer
@@ -276,6 +300,10 @@
 		}
 
 		try {
+			// Mostrar loading overlay con paso 1
+			isLoadingBigQuery = true;
+			loadingStep = 1;
+			loadingStepText = 'Conectando con BigQuery...';
 			console.log('🔄 Consultando BigQuery...');
 
 			const response = await fetch('/api/bigquery', {
@@ -290,11 +318,19 @@
 				})
 			});
 
+			// Paso 2: Procesando respuesta
+			loadingStep = 2;
+			loadingStepText = 'Descargando datos...';
+
 			const result = await response.json();
 
 			if (result.success) {
 				console.log('✅ Datos obtenidos de BigQuery:', result.count, 'registros');
 				console.log('📊 Metadata:', result.metadata);
+
+				// Paso 3: Procesando datos
+				loadingStep = 3;
+				loadingStepText = 'Procesando datos y generando gráficos...';
 
 				// Cargar datos en el store
 				loadCsvData(result.data);
@@ -319,13 +355,110 @@
 		} catch (error) {
 			console.error('❌ Error de red:', error);
 			alert('❌ Error al conectar con BigQuery:\n' + error.message);
+		} finally {
+			// Ocultar loading overlay
+			isLoadingBigQuery = false;
 		}
 	}
 
-	onMount(() => {
+	async function handleAplicarProyecto(event) {
+		const { proyecto } = event.detail;
+		console.log('📁 Aplicando proyecto:', proyecto.nombre);
+
+		// Cambiar a la pestaña Principal
+		activeTab = 'main';
+
+		// Aplicar los filtros del proyecto al dashboard principal
+		await handleSearch({ detail: proyecto.query });
+
+		// Scroll a la sección principal
+		const element = document.getElementById('main-section');
+		if (element) {
+			element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		}
+	}
+
+	async function handleCompararProyectos(event) {
+		const { proyectos } = event.detail;
+		console.log('📊 Comparando proyectos:', proyectos.map(p => p.nombre));
+
+		// Cambiar a la pestaña de Comparación
+		activeTab = 'comparacion';
+
+		// Ejecutar las queries para cada proyecto
+		await handleUpdateComparison({ detail: { proyectos } });
+
+		// Scroll a la sección de comparación (después de un pequeño delay para que se renderice)
+		setTimeout(() => {
+			const element = document.getElementById('project-comparison-section');
+			if (element) {
+				element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			}
+		}, 100);
+	}
+
+	async function handleUpdateComparison(event) {
+		const { proyectos } = event.detail;
+		console.log('🔄 Actualizando comparación para proyectos:', proyectos);
+
+		// Ejecutar query de BigQuery para cada proyecto
+		const comparisonResults = [];
+		const totalProyectos = proyectos.length;
+
+		for (let i = 0; i < proyectos.length; i++) {
+			const proyecto = proyectos[i];
+			try {
+				console.log(`📥 Obteniendo datos para: ${proyecto.nombre} (${i + 1}/${totalProyectos})`);
+
+				const response = await fetch('/api/bigquery', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						searchTerm: proyecto.query.searchTerm,
+						dateFrom: proyecto.query.dateFrom,
+						dateTo: proyecto.query.dateTo
+					})
+				});
+
+				const result = await response.json();
+				if (result.success) {
+					comparisonResults.push({
+						proyecto,
+						data: result.data,
+						stats: {
+							totalPosts: result.count,
+							totalEngagement: 0,
+							totalLikes: 0,
+							totalReplies: 0,
+							totalShares: 0,
+							avgEngagement: 0
+						}
+					});
+				}
+			} catch (error) {
+				console.error(`❌ Error obteniendo datos para ${proyecto.nombre}:`, error);
+			}
+		}
+
+		comparisonData = comparisonResults;
+		console.log('✅ Comparación actualizada con', comparisonData.length, 'proyectos');
+	}
+
+	onMount(async () => {
 		console.log('🚀 Dashboard Svelte iniciado');
 		console.log('☁️ El botón "Buscar" consulta BigQuery automáticamente');
 		console.log('📄 Usa "Cargar CSV Local" solo si quieres analizar un archivo local');
+
+		// Cargar proyectos guardados al inicio
+		try {
+			const response = await fetch('/api/proyectos');
+			if (response.ok) {
+				allProyectos = await response.json();
+				console.log('✅ Proyectos cargados en +page.svelte:', allProyectos.length);
+			}
+		} catch (error) {
+			console.error('❌ Error cargando proyectos:', error);
+		}
 
 		// Auto-carga de demo data DESHABILITADA para evitar problemas de performance
 		// El usuario debe usar BigQuery o cargar manualmente su CSV
@@ -341,8 +474,11 @@
 	<UnifiedHeader
 		on:csvUpload={handleCsvUpload}
 		on:search={handleSearch}
+		on:tabChange={handleTabChange}
 	/>
 
+	<!-- PESTAÑA PRINCIPAL -->
+	{#if activeTab === 'main'}
 	<!-- Sección Word Cloud (Feature Destacada) - CARGA DIFERIDA -->
 	<div id="wordcloud-section" class="analysis-section featured-section">
 		<div class="section-header">
@@ -391,6 +527,25 @@
 			<h2 class="section-title">📊 Análisis Principal</h2>
 			<p class="section-description">Métricas clave y tendencias temporales</p>
 		</div>
+
+		<!-- Empty State cuando no hay datos -->
+		{#if $filteredData.length === 0 && !isLoadingBigQuery}
+			<EmptyState
+				icon="🔍"
+				title="No hay datos para mostrar"
+				description="Realiza una búsqueda para comenzar a visualizar datos"
+				suggestions={[
+					'Usa el botón "Buscar" para consultar datos de BigQuery',
+					'Amplía el rango de fechas si no encuentras resultados',
+					'Prueba términos de búsqueda menos específicos',
+					'Verifica los filtros de red social',
+					'Puedes cargar un archivo CSV local como alternativa'
+				]}
+			/>
+		{/if}
+
+		<!-- Gráficos (solo mostrar si hay datos) -->
+		{#if $filteredData.length > 0}
 		<div class="charts-row">
 			<!-- Timeline Analytics -->
 			<ChartWidget
@@ -442,9 +597,39 @@
 				/>
 			</ChartWidget>
 		</div>
+		{/if}
 	</div>
+	{/if}
 
-	<!-- Sección de Comparación de Redes -->
+	<!-- PESTAÑA PROYECTOS -->
+	{#if activeTab === 'proyectos'}
+	<!-- Sección de Proyectos -->
+	<div id="proyectos-section" class="analysis-section">
+		<ProyectosView
+			bind:allProyectos
+			bind:selectedProyectoIds
+			on:aplicarProyecto={handleAplicarProyecto}
+			on:compararProyectos={handleCompararProyectos}
+			on:proyectosUpdated={(e) => { allProyectos = e.detail.proyectos; }}
+		/>
+	</div>
+	{/if}
+
+	<!-- PESTAÑA COMPARACIÓN -->
+	{#if activeTab === 'comparacion'}
+	<!-- Sección de Comparación de Proyectos -->
+	<div id="project-comparison-section" class="analysis-section">
+		<ProjectComparisonView
+			{comparisonData}
+			{allProyectos}
+			bind:selectedProyectoIds
+			on:updateComparison={handleUpdateComparison}
+		/>
+	</div>
+	{/if}
+
+	<!--  Sección de Comparación de Redes (siempre en Principal) -->
+	{#if activeTab === 'main'}
 	<div id="network-comparison-section" class="analysis-section">
 		<div class="section-header">
 			<h2 class="section-title">🔀 Comparación de Redes Sociales</h2>
@@ -675,7 +860,34 @@
 			{/if}
 		</div>
 	</div>
+	{/if}
 
+	<!-- Loading overlay mejorado con pasos -->
+	{#if isLoadingBigQuery}
+		<div class="loading-overlay">
+			<div class="loading-content">
+				<div class="loading-icon">🔍</div>
+				<h2>Consultando BigQuery...</h2>
+				<div class="loading-steps">
+					<div class="step" class:active={loadingStep === 1} class:completed={loadingStep > 1}>
+						<div class="step-number">1</div>
+						<div class="step-text">Conectando</div>
+					</div>
+					<div class="step-line" class:completed={loadingStep > 1}></div>
+					<div class="step" class:active={loadingStep === 2} class:completed={loadingStep > 2}>
+						<div class="step-number">2</div>
+						<div class="step-text">Descargando</div>
+					</div>
+					<div class="step-line" class:completed={loadingStep > 2}></div>
+					<div class="step" class:active={loadingStep === 3} class:completed={loadingStep > 3}>
+						<div class="step-number">3</div>
+						<div class="step-text">Procesando</div>
+					</div>
+				</div>
+				<p class="loading-step-text">{loadingStepText}</p>
+			</div>
+		</div>
+	{/if}
 
 	<!-- Status del dashboard -->
 	<div class="dashboard-status">
@@ -688,6 +900,137 @@
 </div>
 
 <style>
+	/* Loading overlay styles */
+	.loading-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.7);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 9999;
+		backdrop-filter: blur(4px);
+	}
+
+	.loading-content {
+		background: white;
+		padding: 3rem;
+		border-radius: 16px;
+		text-align: center;
+		box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+		max-width: 500px;
+		animation: slideIn 0.3s ease-out;
+	}
+
+	@keyframes slideIn {
+		from {
+			opacity: 0;
+			transform: translateY(-20px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.loading-icon {
+		font-size: 4rem;
+		margin-bottom: 1rem;
+		animation: pulse 1.5s ease-in-out infinite;
+	}
+
+	@keyframes pulse {
+		0%, 100% {
+			transform: scale(1);
+		}
+		50% {
+			transform: scale(1.1);
+		}
+	}
+
+	.loading-content h2 {
+		margin: 0 0 2rem 0;
+		color: #333;
+		font-size: 1.5rem;
+	}
+
+	.loading-steps {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 1.5rem;
+	}
+
+	.step {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.step-number {
+		width: 40px;
+		height: 40px;
+		border-radius: 50%;
+		background: #e0e0e0;
+		color: #999;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-weight: 600;
+		transition: all 0.3s ease;
+	}
+
+	.step.active .step-number {
+		background: #3b82f6;
+		color: white;
+		box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+		animation: pulse 1.5s ease-in-out infinite;
+	}
+
+	.step.completed .step-number {
+		background: #10b981;
+		color: white;
+	}
+
+	.step-text {
+		font-size: 0.85rem;
+		color: #666;
+		transition: all 0.3s ease;
+	}
+
+	.step.active .step-text {
+		color: #3b82f6;
+		font-weight: 600;
+	}
+
+	.step.completed .step-text {
+		color: #10b981;
+	}
+
+	.step-line {
+		width: 60px;
+		height: 2px;
+		background: #e0e0e0;
+		margin: 0 0.5rem;
+		margin-bottom: 2rem;
+		transition: all 0.3s ease;
+	}
+
+	.step-line.completed {
+		background: #10b981;
+	}
+
+	.loading-step-text {
+		margin: 0;
+		color: #666;
+		font-size: 0.95rem;
+		min-height: 24px;
+	}
+
 	.dashboard-status {
 		position: fixed;
 		bottom: 20px;

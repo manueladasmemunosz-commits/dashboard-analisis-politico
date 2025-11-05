@@ -80,6 +80,63 @@
 
 		// Definir todas las paletas de colores disponibles
 		const colorPalettes = {
+			// NUEVA PALETA EXTENDIDA: 40 colores altamente diferenciados
+			// Usa distribución HSL para máxima diferenciación visual
+			extended: [
+				// Rojos (0-15°)
+				{ bg: 'rgba(220, 38, 38, 0.85)', border: '#dc2626' },
+				{ bg: 'rgba(185, 28, 28, 0.85)', border: '#b91c1c' },
+				// Naranjas (15-45°)
+				{ bg: 'rgba(249, 115, 22, 0.85)', border: '#ea580c' },
+				{ bg: 'rgba(234, 88, 12, 0.85)', border: '#c2410c' },
+				{ bg: 'rgba(251, 146, 60, 0.85)', border: '#fb923c' },
+				// Amarillos (45-75°)
+				{ bg: 'rgba(251, 191, 36, 0.85)', border: '#f59e0b' },
+				{ bg: 'rgba(245, 158, 11, 0.85)', border: '#d97706' },
+				{ bg: 'rgba(250, 204, 21, 0.85)', border: '#facc15' },
+				// Verde-Amarillo (75-105°)
+				{ bg: 'rgba(190, 242, 100, 0.85)', border: '#bef264' },
+				{ bg: 'rgba(163, 230, 53, 0.85)', border: '#a3e635' },
+				{ bg: 'rgba(132, 204, 22, 0.85)', border: '#84cc16' },
+				// Verdes (105-165°)
+				{ bg: 'rgba(74, 222, 128, 0.85)', border: '#4ade80' },
+				{ bg: 'rgba(34, 197, 94, 0.85)', border: '#22c55e' },
+				{ bg: 'rgba(22, 163, 74, 0.85)', border: '#16a34a' },
+				{ bg: 'rgba(21, 128, 61, 0.85)', border: '#15803d' },
+				// Verde-Azul/Teal (165-195°)
+				{ bg: 'rgba(20, 184, 166, 0.85)', border: '#14b8a6' },
+				{ bg: 'rgba(13, 148, 136, 0.85)', border: '#0d9488' },
+				{ bg: 'rgba(15, 118, 110, 0.85)', border: '#0f766e' },
+				// Cyan (195-225°)
+				{ bg: 'rgba(6, 182, 212, 0.85)', border: '#06b6d4' },
+				{ bg: 'rgba(8, 145, 178, 0.85)', border: '#0891b2' },
+				{ bg: 'rgba(14, 116, 144, 0.85)', border: '#0e7490' },
+				// Azules (225-255°)
+				{ bg: 'rgba(59, 130, 246, 0.85)', border: '#3b82f6' },
+				{ bg: 'rgba(37, 99, 235, 0.85)', border: '#2563eb' },
+				{ bg: 'rgba(29, 78, 216, 0.85)', border: '#1d4ed8' },
+				{ bg: 'rgba(30, 58, 138, 0.85)', border: '#1e3a8a' },
+				// Indigo (255-270°)
+				{ bg: 'rgba(99, 102, 241, 0.85)', border: '#6366f1' },
+				{ bg: 'rgba(79, 70, 229, 0.85)', border: '#4f46e5' },
+				{ bg: 'rgba(67, 56, 202, 0.85)', border: '#4338ca' },
+				// Púrpura (270-300°)
+				{ bg: 'rgba(168, 85, 247, 0.85)', border: '#a855f7' },
+				{ bg: 'rgba(147, 51, 234, 0.85)', border: '#9333ea' },
+				{ bg: 'rgba(126, 34, 206, 0.85)', border: '#7e22ce' },
+				{ bg: 'rgba(107, 33, 168, 0.85)', border: '#6b21a8' },
+				// Fucsia/Magenta (300-330°)
+				{ bg: 'rgba(217, 70, 239, 0.85)', border: '#d946ef' },
+				{ bg: 'rgba(192, 38, 211, 0.85)', border: '#c026d3' },
+				{ bg: 'rgba(162, 28, 175, 0.85)', border: '#a21caf' },
+				// Rosa (330-360°)
+				{ bg: 'rgba(236, 72, 153, 0.85)', border: '#ec4899' },
+				{ bg: 'rgba(219, 39, 119, 0.85)', border: '#db2777' },
+				{ bg: 'rgba(190, 24, 93, 0.85)', border: '#be185d' },
+				// Marrones (tierra)
+				{ bg: 'rgba(180, 83, 9, 0.85)', border: '#b45309' },
+				{ bg: 'rgba(146, 64, 14, 0.85)', border: '#92400e' }
+			],
 			chilean: [
 				// Azules Chile (tonos de la bandera)
 				{ bg: 'rgba(0, 56, 168, 0.85)', border: '#0038a8' },        // Azul bandera oficial
