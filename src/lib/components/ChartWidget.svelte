@@ -26,10 +26,17 @@
 
 	import { createEventDispatcher } from 'svelte';
 	import ChartControls from './ChartControls.svelte';
-	import { updateChartConfig, updateFilters } from '$lib/stores/dashboard.js';
+	import { filters, updateChartConfig, updateFilters } from '$lib/stores/dashboard.js';
 	import './widget-styles.css';
 
 	const dispatch = createEventDispatcher();
+
+	// Sincronizar fechas locales con el store global de filtros
+	// Esto asegura que los widgets de gráficos reflejen las fechas globales
+	$: if ($filters.dateFrom && $filters.dateTo) {
+		dateFrom = $filters.dateFrom;
+		dateTo = $filters.dateTo;
+	}
 
 	function handleDateChange(event) {
 		const { dateFrom: newDateFrom, dateTo: newDateTo } = event.detail;

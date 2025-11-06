@@ -1,5 +1,6 @@
 <script>
 	import { createEventDispatcher, onMount } from 'svelte';
+	import { filters } from '$lib/stores/dashboard.js';
 
 	export const chartName = '';
 	export let chartType = 'line';
@@ -21,6 +22,13 @@
 	export let showColorPaletteControls = false;
 	export let showVisualizationModeControls = false; // Para engagement scatter
 	export let chartTypes = ['line', 'bar', 'area'];
+
+	// Sincronizar fechas locales con el store global de filtros
+	// Esto asegura que los inputs de fecha de cada gráfico reflejen las fechas globales
+	$: if ($filters.dateFrom && $filters.dateTo) {
+		dateFrom = $filters.dateFrom;
+		dateTo = $filters.dateTo;
+	}
 
 	// Proyectos
 	let proyectos = [];
