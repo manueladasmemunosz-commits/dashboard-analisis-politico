@@ -1,131 +1,108 @@
 import { json } from '@sveltejs/kit';
-import fs from 'fs';
-import path from 'path';
 
-// Ruta al archivo JSON de proyectos
-const proyectosPath = path.resolve('src/data/proyectos.json');
+// Esta API ahora solo sirve para desarrollo local
+// En producción (Vercel), los proyectos se guardan en localStorage del navegador
 
-// GET: Obtener todos los proyectos
+// GET: Intentar obtener proyectos del archivo estático, o devolver vacío
 export async function GET() {
 	try {
-		const data = fs.readFileSync(proyectosPath, 'utf-8');
-		const proyectos = JSON.parse(data);
-		return json(proyectos);
+		// Intentar leer el archivo solo en desarrollo local
+		if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+			const fs = await import('fs');
+			const path = await import('path');
+			const proyectosPath = path.resolve('src/data/proyectos.json');
+
+			if (fs.existsSync(proyectosPath)) {
+				const data = fs.readFileSync(proyectosPath, 'utf-8');
+				const proyectos = JSON.parse(data);
+				console.log('✅ Proyectos cargados desde archivo:', proyectos.length);
+				return json(proyectos);
+			}
+		}
+
+		// En producción o si no existe el archivo, devolver los proyectos por defecto
+		const proyectosDefault = [
+			{
+				"id": "presidenciales",
+				"nombre": "Presidenciales",
+				"descripcion": "",
+				"creador": "Equipo Análisis",
+				"query": {
+					"searchTerm": "Jara OR Kast OR Parisi OR Kaiser",
+					"dateFrom": "2025-08-01",
+					"dateTo": "2025-12-31",
+					"redes": ["twitter", "news"]
+				},
+				"color": "#3498db",
+				"createdAt": "2025-10-31T16:14:47.569Z"
+			},
+			{
+				"id": "seguridad",
+				"nombre": "Seguridad",
+				"descripcion": "",
+				"creador": "Equipo Análisis",
+				"query": {
+					"searchTerm": "delictuales OR delictivos OR balazos OR seguridad",
+					"dateFrom": "2025-11-01",
+					"dateTo": "2025-12-31",
+					"redes": ["twitter", "news"]
+				},
+				"color": "#3498db",
+				"createdAt": "2025-11-04T12:48:26.878Z",
+				"updatedAt": "2025-11-05T18:37:04.052Z"
+			}
+		];
+
+		console.log('ℹ️ Devolviendo proyectos por defecto (localStorage es la fuente principal)');
+		return json(proyectosDefault);
+
 	} catch (error) {
-		console.error('❌ Error leyendo proyectos:', error);
-		return json({ error: 'Error al leer proyectos' }, { status: 500 });
+		console.log('⚠️ API en modo serverless - devolviendo array vacío');
+		// Devolver array vacío para que el frontend use localStorage
+		return json([]);
 	}
 }
 
-// POST: Crear nuevo proyecto
+// POST: En producción usa localStorage, este endpoint solo confirma recepción
 export async function POST({ request }) {
 	try {
 		const nuevoProyecto = await request.json();
+		console.log('ℹ️ Proyecto recibido (localStorage maneja persistencia):', nuevoProyecto.nombre);
 
-		// Validar campos requeridos
-		if (!nuevoProyecto.nombre || !nuevoProyecto.query || !nuevoProyecto.query.searchTerm) {
-			return json({ error: 'Faltan campos requeridos' }, { status: 400 });
-		}
-
-		// Generar ID único si no viene
-		if (!nuevoProyecto.id) {
-			nuevoProyecto.id = nuevoProyecto.nombre.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-		}
-
-		// Agregar timestamps
-		nuevoProyecto.createdAt = new Date().toISOString();
-
-		// Leer proyectos actuales
-		const data = fs.readFileSync(proyectosPath, 'utf-8');
-		const proyectos = JSON.parse(data);
-
-		// Verificar que no exista el ID
-		if (proyectos.find(p => p.id === nuevoProyecto.id)) {
-			return json({ error: 'Ya existe un proyecto con ese ID' }, { status: 400 });
-		}
-
-		// Agregar nuevo proyecto
-		proyectos.push(nuevoProyecto);
-
-		// Guardar
-		fs.writeFileSync(proyectosPath, JSON.stringify(proyectos, null, 2));
-
-		console.log('✅ Proyecto creado:', nuevoProyecto.nombre);
+		// En producción, el frontend maneja todo con localStorage
+		// Solo devolvemos el proyecto para confirmar
 		return json(nuevoProyecto, { status: 201 });
 
 	} catch (error) {
-		console.error('❌ Error creando proyecto:', error);
-		return json({ error: 'Error al crear proyecto' }, { status: 500 });
+		console.error('❌ Error en POST:', error);
+		return json({ error: 'Error al procesar proyecto' }, { status: 500 });
 	}
 }
 
-// PUT: Actualizar proyecto existente
+// PUT: En producción usa localStorage
 export async function PUT({ request }) {
 	try {
 		const proyectoActualizado = await request.json();
+		console.log('ℹ️ Proyecto actualizado (localStorage maneja persistencia):', proyectoActualizado.nombre);
 
-		if (!proyectoActualizado.id) {
-			return json({ error: 'ID de proyecto requerido' }, { status: 400 });
-		}
-
-		// Leer proyectos actuales
-		const data = fs.readFileSync(proyectosPath, 'utf-8');
-		let proyectos = JSON.parse(data);
-
-		// Encontrar índice del proyecto
-		const index = proyectos.findIndex(p => p.id === proyectoActualizado.id);
-
-		if (index === -1) {
-			return json({ error: 'Proyecto no encontrado' }, { status: 404 });
-		}
-
-		// Mantener createdAt original, actualizar updatedAt
-		proyectoActualizado.createdAt = proyectos[index].createdAt;
-		proyectoActualizado.updatedAt = new Date().toISOString();
-
-		// Actualizar proyecto
-		proyectos[index] = proyectoActualizado;
-
-		// Guardar
-		fs.writeFileSync(proyectosPath, JSON.stringify(proyectos, null, 2));
-
-		console.log('✅ Proyecto actualizado:', proyectoActualizado.nombre);
 		return json(proyectoActualizado);
 
 	} catch (error) {
-		console.error('❌ Error actualizando proyecto:', error);
+		console.error('❌ Error en PUT:', error);
 		return json({ error: 'Error al actualizar proyecto' }, { status: 500 });
 	}
 }
 
-// DELETE: Eliminar proyecto
+// DELETE: En producción usa localStorage
 export async function DELETE({ request }) {
 	try {
 		const { id } = await request.json();
+		console.log('ℹ️ Proyecto eliminado (localStorage maneja persistencia):', id);
 
-		if (!id) {
-			return json({ error: 'ID de proyecto requerido' }, { status: 400 });
-		}
-
-		// Leer proyectos actuales
-		const data = fs.readFileSync(proyectosPath, 'utf-8');
-		let proyectos = JSON.parse(data);
-
-		// Filtrar proyecto a eliminar
-		const proyectosFiltrados = proyectos.filter(p => p.id !== id);
-
-		if (proyectos.length === proyectosFiltrados.length) {
-			return json({ error: 'Proyecto no encontrado' }, { status: 404 });
-		}
-
-		// Guardar
-		fs.writeFileSync(proyectosPath, JSON.stringify(proyectosFiltrados, null, 2));
-
-		console.log('✅ Proyecto eliminado:', id);
 		return json({ success: true, id });
 
 	} catch (error) {
-		console.error('❌ Error eliminando proyecto:', error);
+		console.error('❌ Error en DELETE:', error);
 		return json({ error: 'Error al eliminar proyecto' }, { status: 500 });
 	}
 }
