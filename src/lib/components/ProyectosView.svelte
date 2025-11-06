@@ -130,6 +130,7 @@
 			// Validar campos requeridos
 			if (!formData.nombre || !formData.query.searchTerm) {
 				alert('⚠️ Nombre y query son obligatorios');
+				loading = false;
 				return;
 			}
 
