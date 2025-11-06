@@ -247,9 +247,10 @@ export async function POST({ request }) {
 						const escapedKeyword = keyword
 							.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // Escapar caracteres especiales de regex
 
-						// \\b = word boundary (límite de palabra)
+						// \b = word boundary (límite de palabra)
 						// Esto asegura que "fes" NO coincida con "profesores"
-						const regexPattern = `\\\\b${escapedKeyword}\\\\b`;
+						// IMPORTANTE: Solo 2 backslashes en JS → 1 backslash en el string → BigQuery interpreta como word boundary
+						const regexPattern = `\\b${escapedKeyword}\\b`;
 						return `(REGEXP_CONTAINS(LOWER(text), r'${regexPattern}') OR REGEXP_CONTAINS(LOWER(user_name), r'${regexPattern}'))`;
 					}
 				});
