@@ -113,6 +113,11 @@
 	// Estado de Word Cloud (carga diferida)
 	let wordCloudEnabled = false;
 
+	// Actualizar Word Cloud automáticamente cuando cambien los filtros (si está habilitado)
+	$: if (wordCloudEnabled && $filteredData) {
+		processWordCloudData($filteredData);
+	}
+
 	// Estado de Scatter Chart (carga diferida)
 	let scatterChartEnabled = false;
 
