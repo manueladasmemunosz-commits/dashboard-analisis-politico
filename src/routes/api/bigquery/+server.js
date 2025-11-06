@@ -134,9 +134,10 @@ function getBigQueryClient() {
 	const credentials = process.env.BIGQUERY_CREDENTIALS;
 
 	// Debug logging EXTENDIDO para diagnosticar problemas en Vercel
-	console.log('🔍 Verificando credenciales de BigQuery...');
+	console.log('🔍 [BIGQUERY DEBUG] Verificando credenciales...');
 	console.log('  - NODE_ENV:', process.env.NODE_ENV);
 	console.log('  - Plataforma:', process.platform);
+	console.log('  - Timestamp:', new Date().toISOString());
 	console.log('  - BIGQUERY_CREDENTIALS está definido:', !!credentials);
 	console.log('  - Longitud de BIGQUERY_CREDENTIALS:', credentials?.length || 0);
 	console.log('  - Primeros 50 caracteres:', credentials?.substring(0, 50) || 'N/A');
