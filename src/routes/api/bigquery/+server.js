@@ -131,26 +131,28 @@ function escapeSqlString(str) {
  */
 function getBigQueryClient() {
 	// Las credenciales se obtienen de variables de entorno
-	// GOOGLE_APPLICATION_CREDENTIALS debe apuntar al archivo de credenciales
-	// o se pueden configurar las credenciales directamente
-
-	const credentials = process.env.BIGQUERY_CREDENTIALS;
+	// Intentar múltiples nombres de variables por compatibilidad
+	const credentials = process.env.BQ_CREDENTIALS ||
+	                    process.env.BIGQUERY_CREDENTIALS ||
+	                    process.env.GOOGLE_BIGQUERY_CREDENTIALS;
 
 	// Debug logging EXTENDIDO para diagnosticar problemas en Vercel
 	console.log('🔍 [BIGQUERY DEBUG] Verificando credenciales...');
 	console.log('  - NODE_ENV:', process.env.NODE_ENV);
 	console.log('  - Plataforma:', process.platform);
 	console.log('  - Timestamp:', new Date().toISOString());
-	console.log('  - BIGQUERY_CREDENTIALS está definido:', !!credentials);
-	console.log('  - Longitud de BIGQUERY_CREDENTIALS:', credentials?.length || 0);
+	console.log('  - BQ_CREDENTIALS existe:', !!process.env.BQ_CREDENTIALS, '- Longitud:', process.env.BQ_CREDENTIALS?.length || 0);
+	console.log('  - BIGQUERY_CREDENTIALS existe:', !!process.env.BIGQUERY_CREDENTIALS, '- Longitud:', process.env.BIGQUERY_CREDENTIALS?.length || 0);
+	console.log('  - GOOGLE_BIGQUERY_CREDENTIALS existe:', !!process.env.GOOGLE_BIGQUERY_CREDENTIALS, '- Longitud:', process.env.GOOGLE_BIGQUERY_CREDENTIALS?.length || 0);
+	console.log('  - Credencial final seleccionada:', !!credentials, '- Longitud:', credentials?.length || 0);
 	console.log('  - Primeros 50 caracteres:', credentials?.substring(0, 50) || 'N/A');
 	console.log('  - GOOGLE_APPLICATION_CREDENTIALS:', process.env.GOOGLE_APPLICATION_CREDENTIALS || 'no definido');
 
-	// Listar TODAS las variables de entorno que empiezan con BIGQUERY o GOOGLE
+	// Listar TODAS las variables de entorno que empiezan con BQ, BIGQUERY o GOOGLE
 	console.log('  - Variables de entorno disponibles:');
 	Object.keys(process.env).forEach(key => {
-		if (key.includes('BIGQUERY') || key.includes('GOOGLE')) {
-			console.log(`    * ${key}: ${process.env[key] ? 'EXISTE' : 'VACÍO'}`);
+		if (key.includes('BQ') || key.includes('BIGQUERY') || key.includes('GOOGLE')) {
+			console.log(`    * ${key}: ${process.env[key] ? 'EXISTE (longitud: ' + process.env[key].length + ')' : 'VACÍO'}`);
 		}
 	});
 
