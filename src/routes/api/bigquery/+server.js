@@ -226,8 +226,24 @@ export async function POST({ request }) {
 			if (keywords.length > 0) {
 				// Buscar cualquiera de las palabras clave en BigQuery (OR)
 				const searchConditions = keywords.map(keyword => {
-					const safeKeyword = escapeSqlString(keyword);
-					return `(LOWER(text) LIKE '%${safeKeyword}%' OR LOWER(user_name) LIKE '%${safeKeyword}%')`;
+					// Detectar si tiene wildcards (%) - si los tiene, usar LIKE, sino usar REGEXP con word boundaries
+					const hasWildcard = keyword.includes('%');
+
+					if (hasWildcard) {
+						// Si tiene wildcards, usar LIKE para búsqueda parcial
+						const safeKeyword = escapeSqlString(keyword);
+						return `(LOWER(text) LIKE '%${safeKeyword}%' OR LOWER(user_name) LIKE '%${safeKeyword}%')`;
+					} else {
+						// Sin wildcards: buscar palabra completa usando REGEXP con word boundaries
+						// Escapar caracteres especiales de regex
+						const escapedKeyword = keyword
+							.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // Escapar caracteres especiales de regex
+
+						// \\b = word boundary (límite de palabra)
+						// Esto asegura que "fes" NO coincida con "profesores"
+						const regexPattern = `\\\\b${escapedKeyword}\\\\b`;
+						return `(REGEXP_CONTAINS(LOWER(text), r'${regexPattern}') OR REGEXP_CONTAINS(LOWER(user_name), r'${regexPattern}'))`;
+					}
 				});
 
 				baseQuery += ` AND (${searchConditions.join(' OR ')})`;
