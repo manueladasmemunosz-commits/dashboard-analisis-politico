@@ -10,12 +10,20 @@
  * 5. Límite de 200,000 resultados para balance entre datos y rendimiento
  */
 
-// Cargar variables de entorno
-import dotenv from 'dotenv';
-dotenv.config();
-
 import { json } from '@sveltejs/kit';
 import { BigQuery } from '@google-cloud/bigquery';
+
+// Cargar dotenv solo en desarrollo local
+// En Vercel (producción), las variables de entorno ya están disponibles
+if (process.env.NODE_ENV !== 'production') {
+	try {
+		const dotenv = await import('dotenv');
+		dotenv.config();
+		console.log('📝 Variables de entorno cargadas desde .env (desarrollo local)');
+	} catch (e) {
+		// dotenv no está disponible o hubo un error, continuar sin él
+	}
+}
 
 // Tabla autorizada
 const AUTHORIZED_TABLE = 'secom-359014.ProyectosTooldata.datav2';
