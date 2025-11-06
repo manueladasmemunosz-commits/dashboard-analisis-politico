@@ -125,28 +125,44 @@ function getBigQueryClient() {
 
 	const credentials = process.env.BIGQUERY_CREDENTIALS;
 
-	// Debug logging
+	// Debug logging EXTENDIDO para diagnosticar problemas en Vercel
 	console.log('🔍 Verificando credenciales de BigQuery...');
+	console.log('  - NODE_ENV:', process.env.NODE_ENV);
+	console.log('  - Plataforma:', process.platform);
 	console.log('  - BIGQUERY_CREDENTIALS está definido:', !!credentials);
 	console.log('  - Longitud de BIGQUERY_CREDENTIALS:', credentials?.length || 0);
+	console.log('  - Primeros 50 caracteres:', credentials?.substring(0, 50) || 'N/A');
 	console.log('  - GOOGLE_APPLICATION_CREDENTIALS:', process.env.GOOGLE_APPLICATION_CREDENTIALS || 'no definido');
+
+	// Listar TODAS las variables de entorno que empiezan con BIGQUERY o GOOGLE
+	console.log('  - Variables de entorno disponibles:');
+	Object.keys(process.env).forEach(key => {
+		if (key.includes('BIGQUERY') || key.includes('GOOGLE')) {
+			console.log(`    * ${key}: ${process.env[key] ? 'EXISTE' : 'VACÍO'}`);
+		}
+	});
 
 	if (credentials) {
 		// Si las credenciales están en formato JSON como string
 		try {
 			const credentialsObj = JSON.parse(credentials);
+			console.log('✅ Credenciales parseadas correctamente');
+			console.log('  - project_id:', credentialsObj.project_id);
 			return new BigQuery({
 				projectId: credentialsObj.project_id,
 				credentials: credentialsObj
 			});
 		} catch (e) {
 			console.error('❌ Error parseando credenciales:', e);
-			throw new Error('Error en configuración de credenciales');
+			console.error('  - Credenciales raw (primeros 100 chars):', credentials.substring(0, 100));
+			throw new Error('Error en configuración de credenciales: ' + e.message);
 		}
 	} else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
 		// Si apunta a un archivo
+		console.log('📁 Usando GOOGLE_APPLICATION_CREDENTIALS file');
 		return new BigQuery();
 	} else {
+		console.error('❌ NO SE ENCONTRARON CREDENCIALES');
 		throw new Error('⛔ Credenciales de BigQuery no configuradas. Configure BIGQUERY_CREDENTIALS o GOOGLE_APPLICATION_CREDENTIALS');
 	}
 }
