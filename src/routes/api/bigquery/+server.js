@@ -7,7 +7,10 @@
  * 2. Tabla específica autorizada
  * 3. Escape de SQL injection
  * 4. Rango de fechas obligatorio y limitado (máx 2 años)
- * 5. Límite de 200,000 resultados para balance entre datos y rendimiento
+ * 5. Límite de 250,000 resultados para balance entre datos y rendimiento
+ *
+ * IMPORTANTE: Asegúrate de que BIGQUERY_CREDENTIALS esté configurada
+ * en Vercel Settings → Environment Variables → Production
  */
 
 import { json } from '@sveltejs/kit';
