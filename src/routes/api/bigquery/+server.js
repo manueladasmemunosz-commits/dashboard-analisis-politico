@@ -125,6 +125,12 @@ function getBigQueryClient() {
 
 	const credentials = process.env.BIGQUERY_CREDENTIALS;
 
+	// Debug logging
+	console.log('🔍 Verificando credenciales de BigQuery...');
+	console.log('  - BIGQUERY_CREDENTIALS está definido:', !!credentials);
+	console.log('  - Longitud de BIGQUERY_CREDENTIALS:', credentials?.length || 0);
+	console.log('  - GOOGLE_APPLICATION_CREDENTIALS:', process.env.GOOGLE_APPLICATION_CREDENTIALS || 'no definido');
+
 	if (credentials) {
 		// Si las credenciales están en formato JSON como string
 		try {
