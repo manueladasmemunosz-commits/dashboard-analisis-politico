@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { rawData, filteredData, loadCsvData, processWordCloudData, updateFilters } from '$lib/stores/dashboard.js';
+	import { rawData, filteredData, dataFilteredByDatesOnly, loadCsvData, processWordCloudData, updateFilters } from '$lib/stores/dashboard.js';
 
 	// NO activar automáticamente el Word Cloud - solo cuando el usuario haga click
 	import UnifiedHeader from '$lib/components/UnifiedHeader.svelte';
@@ -640,7 +640,7 @@
 			<h2 class="section-title">🔀 Comparación de Redes Sociales</h2>
 			<p class="section-description">Compara el volumen de actividad entre diferentes redes o grupos de redes</p>
 		</div>
-		<NetworkComparisonWidget data={$filteredData} />
+		<NetworkComparisonWidget data={$dataFilteredByDatesOnly} />
 	</div>
 
 	<!-- Sección de Análisis de Usuarios -->

@@ -325,6 +325,30 @@ export const filteredData = derived(
 	}
 );
 
+// Store para datos filtrados SOLO por fechas (sin filtro de redes sociales)
+// Usado por NetworkComparisonWidget que hace su propio filtrado de redes
+export const dataFilteredByDatesOnly = derived(
+	[rawData, filters],
+	([$rawData, $filters]) => {
+		let filtered = [...$rawData];
+
+		// Filtro por fechas solamente
+		if ($filters.dateFrom && $filters.dateTo) {
+			filtered = filtered.filter(post => {
+				const rawDate = post.created ? post.created.split(' ')[0] : null;
+				const isValidDate = rawDate && /^\d{4}[-/]\d{2}[-/]\d{2}$/.test(rawDate);
+
+				if (!isValidDate) return true;
+
+				const postDate = rawDate.replace(/\//g, '-');
+				return postDate >= $filters.dateFrom && postDate <= $filters.dateTo;
+			});
+		}
+
+		return filtered;
+	}
+);
+
 // Funciones utilitarias
 export function loadCsvData(data) {
 	console.log('📄 Cargando datos CSV:', data.length, 'registros totales');
