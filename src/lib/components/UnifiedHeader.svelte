@@ -14,14 +14,9 @@
 	let dateTo = today.toISOString().split('T')[0];
 	let showHelpModal = false;
 
-	// Sincronizar fechas locales con el store global
-	// Esto asegura que los inputs muestren las fechas actuales del filtro global
-	// IMPORTANTE: Solo actualizar si los valores realmente cambiaron (prevenir loop)
-	$: if ($filters.dateFrom && $filters.dateTo &&
-	       (dateFrom !== $filters.dateFrom || dateTo !== $filters.dateTo)) {
-		dateFrom = $filters.dateFrom;
-		dateTo = $filters.dateTo;
-	}
+	// NOTA: NO sincronizamos automáticamente con el store
+	// Las fechas locales son independientes hasta que el usuario hace clic en "Buscar"
+	// Esto permite al usuario cambiar las fechas libremente sin que se sobreescriban
 
 	function handleSearch() {
 		updateFilters({ searchTerm, dateFrom, dateTo });
