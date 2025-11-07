@@ -141,6 +141,24 @@ function getBigQueryClient() {
 	console.log('  - NODE_ENV:', process.env.NODE_ENV);
 	console.log('  - Plataforma:', process.platform);
 	console.log('  - Timestamp:', new Date().toISOString());
+
+	// Verificar entorno Vercel
+	console.log('  - VERCEL:', process.env.VERCEL || 'no (local)');
+	console.log('  - VERCEL_ENV:', process.env.VERCEL_ENV || 'no definido');
+
+	// Contar TODAS las variables de entorno disponibles
+	const totalEnvVars = Object.keys(process.env).length;
+	console.log(`  - Total variables de entorno disponibles: ${totalEnvVars}`);
+
+	// Mostrar primeras 10 variables (para verificar que process.env funciona)
+	console.log('  - Primeras 10 variables de entorno:');
+	Object.keys(process.env).slice(0, 10).forEach(key => {
+		const value = process.env[key];
+		const preview = value ? (value.length > 50 ? value.substring(0, 50) + '...' : value) : 'VACÍO';
+		console.log(`    * ${key}: ${preview}`);
+	});
+
+	// Verificar credenciales específicas
 	console.log('  - BQ_CREDENTIALS existe:', !!process.env.BQ_CREDENTIALS, '- Longitud:', process.env.BQ_CREDENTIALS?.length || 0);
 	console.log('  - BIGQUERY_CREDENTIALS existe:', !!process.env.BIGQUERY_CREDENTIALS, '- Longitud:', process.env.BIGQUERY_CREDENTIALS?.length || 0);
 	console.log('  - GOOGLE_BIGQUERY_CREDENTIALS existe:', !!process.env.GOOGLE_BIGQUERY_CREDENTIALS, '- Longitud:', process.env.GOOGLE_BIGQUERY_CREDENTIALS?.length || 0);
@@ -149,12 +167,17 @@ function getBigQueryClient() {
 	console.log('  - GOOGLE_APPLICATION_CREDENTIALS:', process.env.GOOGLE_APPLICATION_CREDENTIALS || 'no definido');
 
 	// Listar TODAS las variables de entorno que empiezan con BQ, BIGQUERY o GOOGLE
-	console.log('  - Variables de entorno disponibles:');
-	Object.keys(process.env).forEach(key => {
-		if (key.includes('BQ') || key.includes('BIGQUERY') || key.includes('GOOGLE')) {
+	console.log('  - Variables de entorno con BQ/BIGQUERY/GOOGLE:');
+	const relevantKeys = Object.keys(process.env).filter(key =>
+		key.includes('BQ') || key.includes('BIGQUERY') || key.includes('GOOGLE')
+	);
+	if (relevantKeys.length === 0) {
+		console.log('    ⚠️ NO SE ENCONTRÓ NINGUNA VARIABLE con BQ, BIGQUERY o GOOGLE');
+	} else {
+		relevantKeys.forEach(key => {
 			console.log(`    * ${key}: ${process.env[key] ? 'EXISTE (longitud: ' + process.env[key].length + ')' : 'VACÍO'}`);
-		}
-	});
+		});
+	}
 
 	if (credentials) {
 		// Si las credenciales están en formato JSON como string

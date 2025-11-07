@@ -33,7 +33,9 @@
 
 	// Sincronizar fechas locales con el store global de filtros
 	// Esto asegura que los widgets de gráficos reflejen las fechas globales
-	$: if ($filters.dateFrom && $filters.dateTo) {
+	// IMPORTANTE: Solo actualizar si los valores realmente cambiaron (prevenir loop)
+	$: if ($filters.dateFrom && $filters.dateTo &&
+	       (dateFrom !== $filters.dateFrom || dateTo !== $filters.dateTo)) {
 		dateFrom = $filters.dateFrom;
 		dateTo = $filters.dateTo;
 	}
