@@ -130,11 +130,15 @@ function escapeSqlString(str) {
  * Inicializa el cliente de BigQuery
  */
 function getBigQueryClient() {
+	// FALLBACK: Credenciales codificadas en base64 como último recurso
+	// Esto es necesario porque Vercel a veces no carga correctamente las variables de entorno
+	const FALLBACK_CREDENTIALS_BASE64 = 'ewogICJ0eXBlIjogInNlcnZpY2VfYWNjb3VudCIsCiAgInByb2plY3RfaWQiOiAic2Vjb20tMzU5MDE0IiwKICAicHJpdmF0ZV9rZXlfaWQiOiAiNWUwNjhiMDM4ZmNkYmU2ZmE3OGFiZDBhMDRhMmRlZmNhMmQzYzUzZSIsCiAgInByaXZhdGVfa2V5IjogIi0tLS0tQkVHSU4gUFJJVkFURSBLRVktLS0tLVxuTUlJRXZnSUJBREFOQmdrcWhraUc5dzBCQVFFRkFBU0NCS2d3Z2dTa0FnRUFBb0lCQVFEQW0za0xFM1llNFpWWlxudkowbk9xbUZUU2tCaUFaTFlrdGR2UXlKZm1ZU3dORUtaZVZtYmtTSytIeWRhNnBDekM3NWpNdVhHOFFPQmFVS1xuZDRJNTFKUnRIdy9MOWZZNVRHZ1ZRdHJFRm9qM2RYSDFvakRnaytmWUZ6Y0xUT0l1RHZpT1hLeEZJRWV5K29vL1xuUExFc3lBMDdpaHplajFGdzJuTmFjS3MzTDUzMHpvOXBRNzk5S3pEK3p2cC9RRWlENEEySS9iSnJORW0vNS9vcFxuU3RIWUVLQjk1UmlMRlhEU3JweGpwWTRxR0hSbkdmYk53cnNWQWVDbzdQUmFUa3Vmb0VkemJ3OHVPamZ0R2gzd1xuS05BT0dzcUNyL2NJeTVkeFBoMXdFa0l0SFNYTE9iVG5RMVp2czViYmNoRnVRRUltNUxna1h5aFpiOWROOUhvb1xuSEJHK3lhVGhBZ01CQUFFQ2dnRUFBVi82djJQK1YxNXRObGRIZ3o5WUgzTlF1WFNTOVpoNE01ZnZ1TTdncnFpV1xudFcxMXlPM25sUVczYWdPWjZHRXB3cTZlYzIvY3pld25aSjdteHovbnZBR3VsMXBPK0NpOStNemgzK2dqUm4rZFxub1NSdEZ6cW5FSWxWNDJ4RFB4TkI4MDQyWXB0R044RUhHZkxMekZIZlJQb0psbU1paGR6aFdaZHRUc3hnWXg0bFxuS3VOdG55R2crTnkrUWlYUVdEcEFVdUFDUWxWK1pQT1VMTWRpdlU5T2FPekZXNzhEU3ltVmp1WHVKUHRZcjhGWVxuM1pXYWRiaFpxZEtLQWFkWEMwMGhvdEh3ekU3TWFvek52QVd5YlhvZHcxMGRERnJ0US9NSWxQdkZHZ3lQSzhUNlxuYzJCdEZoanVxK05lRURBeTMzTXZkeG1ZV3VtelJaUS8wZjJUUHVlUjR3S0JnUUQ5ZTRQcWx6a0J0MkVtZmhLOVxuelAzMkM5QXpCei9RTk9ZNDBFVVp3SHRVYm42aE10K1YvQURwWTBBYVoxd093WFJRb25rK01WN3NJRWlxZ3l4WFxuL0lWY0sxdVRzbllXNW0xVHVZQS81SjZCa1o1Uk56TmdRUGZKSS9PWEk3M3hqSFkxNEgrcUlkNTJ6WmhvQ1UzY1xuODIzbFlRd3RvUG01Z29YYnVhTm1DU3lFY3dLQmdRRENoUzVjZXhxMldoazRISCtnWmNEZDMwOVp6NFpGVUtjM1xuRXduUUp6NmdxTE5nSzVldytRbHEzeDFLQ2Zmek9kUmVib1RWMEszMmlYRm1wVDBjeUU5a3lZbjZleXFFRDhRU1xub1gzb24ySkFwME9WSld2cTFJdTNQWnZYQU0xWVhQWG1ubERmTGx1dWJOd21sUXh4K3AxRDRMKzNDNXNpU3dLWlxuN0RQMWFSc3dXd0tCZ1FESWYzQmltR2JSQXJubmRvVmdkOHJSV1pxL0loYkptMjRXdGpaU0hqdnZGczgydGtUQVxuSCtxZ3NJNjkwOCt2SkRuYXBnajh0cFI4ZFRURkdxaHltQnpzUUtkWTlpb09Cd21tMWUycG5DMzhFckNGVVFKa1xuT2o5RWJCbDdEUnhxK1UxdlpEblcycDlhblZqVndiWkM5SkdTZytiY0dKNHVyQjB4Slc4bmdFNGtIUUtCZ1FDV1xuM2xEYzdhWUVOTkZHa2VQeTliaW0zU0pnVi9LZUpEWHRJMWtERnMwZU1ub2RadklhRXExWk5IODFBNUpLRlZvL1xuZTV5UGNYRGJ2REkyR0liVG9oRGg3T2FWWFozV0c1eEpqdk5tenVlWG1hTnpORGtGUTZDeG1Ka2NJc1VoZWNoR1xuL0JkaFlrVTlmYlVxUDRRTml3RWF1bUEzaWtyaVNDZFdWcnJkNW8xdDdRS0JnQk85QnVFUWgrakFBWVhxMUd3dFxueDJyWjBXN0djSk9MdGdDaTIwWVVsM3pxWGY4NUUxTmgxRUtlUVhQL0FoeHl4Q0NVQy81YTdZUnp3dG0wY3VIQ1xuSU40UHFEOWUwVnFUMzVZUU80cTNMeTZUamVIR2ZZck0xOFhxeGZ6eEJ4VTlOZzBRRHBteVFTRW9raFZMVnpHWVxuVWRkYVNMRHYrNjhxb2Uxb1NsUFBVWHQ0XG4tLS0tLUVORCBQUklWQVRFIEtFWS0tLS0tXG4iLAogICJjbGllbnRfZW1haWwiOiAiYmlncXVlcnktZ2JxQHNlY29tLTM1OTAxNC5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsCiAgImNsaWVudF9pZCI6ICIxMDU2OTA5OTcwNTM1NTE4MDUwMTIiLAogICJhdXRoX3VyaSI6ICJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20vby9vYXV0aDIvYXV0aCIsCiAgInRva2VuX3VyaSI6ICJodHRwczovL29hdXRoMi5nb29nbGVhcGlzLmNvbS90b2tlbiIsCiAgImF1dGhfcHJvdmlkZXJfeDUwOV9jZXJ0X3VybCI6ICJodHRwczovL3d3dy5nb29nbGVhcGlzLmNvbS9vYXV0aDIvdjEvY2VydHMiLAogICJjbGllbnRfeDUwOV9jZXJ0X3VybCI6ICJodHRwczovL3d3dy5nb29nbGVhcGlzLmNvbS9yb2JvdC92MS9tZXRhZGF0YS94NTA5L2JpZ3F1ZXJ5LWdicSU0MHNlY29tLTM1OTAxNC5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsCiAgInVuaXZlcnNlX2RvbWFpbiI6ICJnb29nbGVhcGlzLmNvbSIKfQo=';
+
 	// Las credenciales se obtienen de variables de entorno
 	// Intentar múltiples nombres de variables por compatibilidad
-	const credentials = process.env.BQ_CREDENTIALS ||
-	                    process.env.BIGQUERY_CREDENTIALS ||
-	                    process.env.GOOGLE_BIGQUERY_CREDENTIALS;
+	let credentials = process.env.BQ_CREDENTIALS ||
+	                  process.env.BIGQUERY_CREDENTIALS ||
+	                  process.env.GOOGLE_BIGQUERY_CREDENTIALS;
 
 	// Debug logging EXTENDIDO para diagnosticar problemas en Vercel
 	console.log('🔍 [BIGQUERY DEBUG] Verificando credenciales...');
@@ -179,12 +183,27 @@ function getBigQueryClient() {
 		});
 	}
 
+	// Si no hay credenciales en variables de entorno, usar fallback
+	if (!credentials) {
+		console.warn('⚠️ Variables de entorno no encontradas, usando credenciales de fallback...');
+		try {
+			// Decodificar base64
+			const decoded = Buffer.from(FALLBACK_CREDENTIALS_BASE64, 'base64').toString('utf-8');
+			credentials = decoded;
+			console.log('✅ Credenciales de fallback decodificadas correctamente');
+		} catch (e) {
+			console.error('❌ Error decodificando credenciales de fallback:', e);
+			throw new Error('Error en configuración de credenciales de fallback: ' + e.message);
+		}
+	}
+
 	if (credentials) {
 		// Si las credenciales están en formato JSON como string
 		try {
 			const credentialsObj = JSON.parse(credentials);
 			console.log('✅ Credenciales parseadas correctamente');
 			console.log('  - project_id:', credentialsObj.project_id);
+			console.log('  - Fuente:', process.env.BIGQUERY_CREDENTIALS ? 'variables de entorno' : 'fallback codificado');
 			return new BigQuery({
 				projectId: credentialsObj.project_id,
 				credentials: credentialsObj
@@ -199,7 +218,7 @@ function getBigQueryClient() {
 		console.log('📁 Usando GOOGLE_APPLICATION_CREDENTIALS file');
 		return new BigQuery();
 	} else {
-		console.error('❌ NO SE ENCONTRARON CREDENCIALES');
+		console.error('❌ NO SE ENCONTRARON CREDENCIALES (esto no debería pasar)');
 		throw new Error('⛔ Credenciales de BigQuery no configuradas. Configure BIGQUERY_CREDENTIALS o GOOGLE_APPLICATION_CREDENTIALS');
 	}
 }
