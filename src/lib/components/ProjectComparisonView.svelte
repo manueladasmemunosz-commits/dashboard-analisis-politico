@@ -50,6 +50,7 @@
 	let isLoading = false;
 	let loadingMessage = '';
 	let loadingProgress = 0;
+	let loadingStartTime = 0;
 
 	// Controles de visualización (filtran datos ya cargados)
 	let selectedNetworks = ['all'];
@@ -78,11 +79,16 @@
 	// Métricas calculadas
 	$: comparisonTable = calculateComparisonTable(filteredComparisonData);
 
-	// Desactivar loading cuando lleguen datos
+	// Desactivar loading cuando lleguen datos NUEVOS (después de iniciar la carga)
+	// Solo desactivar si han pasado al menos 100ms desde que se activó el loading
+	// Esto previene que se desactive inmediatamente con datos antiguos
 	$: if (comparisonData && comparisonData.length > 0 && isLoading) {
-		isLoading = false;
-		loadingMessage = '';
-		console.log('✅ Comparación completada');
+		const timeSinceLoadingStarted = Date.now() - loadingStartTime;
+		if (timeSinceLoadingStarted > 100) {
+			isLoading = false;
+			loadingMessage = '';
+			console.log('✅ Comparación completada');
+		}
 	}
 
 	function filterComparisonData(data, networks) {
@@ -242,10 +248,11 @@
 
 		console.log('📋 allProyectos disponibles:', allProyectos);
 
-		// Activar estado de carga
+		// Activar estado de carga y registrar timestamp
 		isLoading = true;
 		loadingProgress = 0;
 		loadingMessage = 'Preparando comparación...';
+		loadingStartTime = Date.now();
 
 		// Obtener proyectos seleccionados y actualizar sus fechas de query
 		const proyectosSeleccionados = allProyectos
