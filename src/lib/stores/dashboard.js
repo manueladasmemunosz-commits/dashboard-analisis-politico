@@ -43,19 +43,8 @@ function applySearchFilter(post, searchTerm) {
 	// Parsear la query en tokens
 	const tokens = parseSearchQuery(searchTerm);
 
-	// DEBUG temporal: ver qué está pasando
-	const result = evaluateTokens(combinedText, tokens);
-	if (text.includes('playstation') || text.includes('servicio')) {
-		console.log('🔍 DEBUG Search Filter:', {
-			searchTerm,
-			tokens,
-			textPreview: text.substring(0, 100),
-			result
-		});
-	}
-
 	// Evaluar contra el texto combinado
-	return result;
+	return evaluateTokens(combinedText, tokens);
 }
 
 // Parser de búsqueda que tokeniza la query
@@ -178,8 +167,15 @@ function evaluateTokens(text, tokens) {
 		} else if (token.type === 'not') {
 			notNext = true;
 		} else if (token.type === 'phrase') {
-			// Búsqueda de frase exacta
-			const phraseMatch = textLower.includes(token.value.toLowerCase());
+			// Búsqueda de frase exacta con word boundaries
+			// Escapar caracteres especiales de regex
+			const escapedPhrase = token.value.toLowerCase()
+				.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+			// Usar word boundaries para buscar frase completa
+			// \b = límite de palabra (asegura que sea palabra completa)
+			const phraseRegex = new RegExp(`\\b${escapedPhrase}\\b`, 'i');
+			const phraseMatch = phraseRegex.test(textLower);
 			const finalMatch = notNext ? !phraseMatch : phraseMatch;
 			notNext = false;
 
@@ -191,8 +187,14 @@ function evaluateTokens(text, tokens) {
 				result = result && finalMatch;
 			}
 		} else if (token.type === 'word') {
-			// Búsqueda de palabra individual
-			const wordMatch = textLower.includes(token.value);
+			// Búsqueda de palabra completa con word boundaries
+			// Escapar caracteres especiales de regex
+			const escapedWord = token.value
+				.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+			// \b = límite de palabra (asegura que "fes" NO matchee "profesor")
+			const wordRegex = new RegExp(`\\b${escapedWord}\\b`, 'i');
+			const wordMatch = wordRegex.test(textLower);
 			const finalMatch = notNext ? !wordMatch : wordMatch;
 			notNext = false;
 
