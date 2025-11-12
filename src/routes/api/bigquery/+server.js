@@ -56,6 +56,20 @@ const EXCLUDED_DOMAINS = [
 	'%.com.br%'         // Dominios .com.br
 ];
 
+// Patrones de caracteres para detectar idiomas asiáticos
+// Usamos rangos Unicode para identificar escrituras no latinas
+const ASIAN_LANGUAGE_PATTERNS = [
+	'[\\u4E00-\\u9FFF]',      // Chino (CJK Unified Ideographs)
+	'[\\u3040-\\u309F]',      // Japonés Hiragana
+	'[\\u30A0-\\u30FF]',      // Japonés Katakana
+	'[\\uAC00-\\uD7AF]',      // Coreano Hangul
+	'[\\u0E00-\\u0E7F]',      // Tailandés
+	'[\\u0600-\\u06FF]',      // Árabe
+	'[\\u0980-\\u09FF]',      // Bengali
+	'[\\u0A00-\\u0A7F]',      // Gurmukhi (Punjabi)
+	'[\\u0D00-\\u0D7F]'       // Malayalam
+];
+
 // Rango máximo permitido en días (2 años = 730 días)
 const MAX_RANGE_DAYS = 730;
 
@@ -283,15 +297,21 @@ export async function POST({ request }) {
 			`LOWER(link) NOT LIKE '${domain}'`
 		).join(' AND ');
 
+		// Construir pattern para detectar idiomas asiáticos
+		// Combinamos todos los patrones en uno solo con OR (|)
+		const asianLanguagePattern = ASIAN_LANGUAGE_PATTERNS.join('|');
+
 		let baseQuery = `
 			SELECT * FROM \`${AUTHORIZED_TABLE}\`
 			WHERE created >= '${dateFromUTC}'
 			  AND created <= '${dateToUTC}'
 			  AND name_proyecto != '${EXCLUDED_PROJECT}'
 			  AND (link IS NULL OR link = '' OR (${domainExclusions}))
+			  AND NOT REGEXP_CONTAINS(text, r'${asianLanguagePattern}')
 		`;
 
 		console.log('🚫 Excluyendo dominios extranjeros:', EXCLUDED_DOMAINS.length, 'patrones');
+		console.log('🚫 Excluyendo idiomas asiáticos/no-latinos:', ASIAN_LANGUAGE_PATTERNS.length, 'patrones Unicode');
 
 		// Agregar término de búsqueda si existe
 		// IMPORTANTE: Extraer frases exactas Y palabras clave por separado
