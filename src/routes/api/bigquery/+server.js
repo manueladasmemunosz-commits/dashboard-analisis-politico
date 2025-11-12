@@ -34,6 +34,28 @@ const AUTHORIZED_TABLE = 'secom-359014.ProyectosTooldata.datav2';
 // Proyecto excluido - NUNCA debe aparecer en búsquedas
 const EXCLUDED_PROJECT = 'pesimismo pais';
 
+// Dominios/medios extranjeros a excluir (España, Argentina, otros países)
+// Las redes sociales (twitter, facebook, etc) se mantienen
+const EXCLUDED_DOMAINS = [
+	'%.es/%',           // Dominios españoles como areajugones.sport.es
+	'%.es',             // Dominios españoles sin path
+	'%.ar/%',           // Dominios argentinos
+	'%.ar',
+	'%.mx/%',           // Dominios mexicanos
+	'%.mx',
+	'%.co/%',           // Dominios colombianos
+	'%.co',
+	'%.pe/%',           // Dominios peruanos
+	'%.pe',
+	'%.br/%',           // Dominios brasileños
+	'%.br',
+	'%.com.ar%',        // Dominios .com.ar
+	'%.com.mx%',        // Dominios .com.mx
+	'%.com.co%',        // Dominios .com.co
+	'%.com.pe%',        // Dominios .com.pe
+	'%.com.br%'         // Dominios .com.br
+];
+
 // Rango máximo permitido en días (2 años = 730 días)
 const MAX_RANGE_DAYS = 730;
 
@@ -256,12 +278,20 @@ export async function POST({ request }) {
 		console.log(`   Chile: ${dateFrom} 00:00 → UTC: ${dateFromUTC}`);
 		console.log(`   Chile: ${dateTo} 23:59 → UTC: ${dateToUTC}`);
 
+		// Construir condiciones de exclusión de dominios extranjeros
+		const domainExclusions = EXCLUDED_DOMAINS.map(domain =>
+			`LOWER(link) NOT LIKE '${domain}'`
+		).join(' AND ');
+
 		let baseQuery = `
 			SELECT * FROM \`${AUTHORIZED_TABLE}\`
 			WHERE created >= '${dateFromUTC}'
 			  AND created <= '${dateToUTC}'
 			  AND name_proyecto != '${EXCLUDED_PROJECT}'
+			  AND (link IS NULL OR link = '' OR (${domainExclusions}))
 		`;
+
+		console.log('🚫 Excluyendo dominios extranjeros:', EXCLUDED_DOMAINS.length, 'patrones');
 
 		// Agregar término de búsqueda si existe
 		// IMPORTANTE: Extraer frases exactas Y palabras clave por separado
