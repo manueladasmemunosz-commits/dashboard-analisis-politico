@@ -43,8 +43,19 @@ function applySearchFilter(post, searchTerm) {
 	// Parsear la query en tokens
 	const tokens = parseSearchQuery(searchTerm);
 
+	// DEBUG temporal: ver qué está pasando
+	const result = evaluateTokens(combinedText, tokens);
+	if (text.includes('playstation') || text.includes('servicio')) {
+		console.log('🔍 DEBUG Search Filter:', {
+			searchTerm,
+			tokens,
+			textPreview: text.substring(0, 100),
+			result
+		});
+	}
+
 	// Evaluar contra el texto combinado
-	return evaluateTokens(combinedText, tokens);
+	return result;
 }
 
 // Parser de búsqueda que tokeniza la query
