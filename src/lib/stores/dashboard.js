@@ -28,144 +28,168 @@ const spanishStopwords = new Set([
 	'te', 'les', 'nos', 'os', 'mí', 'ti', 'sí', 'consigo', 'contigo', 'conmigo'
 ]);
 
-// Función para aplicar búsqueda con operadores lógicos avanzados
+// Función para aplicar búsqueda con operadores lógicos avanzados (mejorada)
 function applySearchFilter(post, searchTerm) {
+	if (!searchTerm || !searchTerm.trim()) return true;
+
 	const text = (post.text || '').toLowerCase();
 	const userName = (post.user_name || '').toLowerCase();
-	let searchLower = searchTerm;
+	const projectName = (post.name_proyecto || '').toLowerCase();
 
-	// Paso 1: Procesar frases exactas (comillas)
-	const exactPhrases = [];
-	const phraseRegex = /"([^"]+)"/g;
-	let match;
+	// Parsear la query en tokens
+	const tokens = parseSearchQuery(searchTerm);
 
-	while ((match = phraseRegex.exec(searchTerm)) !== null) {
-		exactPhrases.push(match[1].toLowerCase());
-		searchLower = searchLower.replace(match[0], ''); // Eliminar de la expresión
-	}
+	// Evaluar contra todos los campos relevantes
+	return evaluateTokens(text, tokens) ||
+	       evaluateTokens(userName, tokens) ||
+	       evaluateTokens(projectName, tokens);
+}
 
-	// Verificar frases exactas
-	for (let phrase of exactPhrases) {
-		if (!text.includes(phrase) && !userName.includes(phrase)) {
-			return false;
-		}
-	}
+// Parser de búsqueda que tokeniza la query
+function parseSearchQuery(query) {
+	const tokens = [];
+	let current = '';
+	let inQuotes = false;
 
-	searchLower = searchLower.toLowerCase().trim();
+	for (let i = 0; i < query.length; i++) {
+		const char = query[i];
 
-	// Si solo había frases exactas, ya validamos
-	if (!searchLower) {
-		return exactPhrases.length > 0;
-	}
-
-	// Paso 2: Procesar comodines (*)
-	function matchWithWildcard(str, pattern) {
-		if (!pattern.includes('*')) {
-			return str.includes(pattern);
-		}
-
-		// Convertir patrón con * a regex
-		const regexPattern = pattern
-			.replace(/[.+?^${}()|[\]\\]/g, '\\$&') // Escapar caracteres especiales
-			.replace(/\*/g, '.*'); // * = cualquier carácter
-
-		const regex = new RegExp(regexPattern);
-		return regex.test(str);
-	}
-
-	// Paso 3: Detectar operadores lógicos
-	const hasAND = searchLower.includes(' and ');
-	const hasOR = searchLower.includes(' or ');
-	const hasNOT = searchLower.includes(' not ');
-	const hasParentheses = searchLower.includes('(') && searchLower.includes(')');
-
-	// Si no hay operadores, búsqueda simple (puede tener comodines)
-	if (!hasAND && !hasOR && !hasNOT && !hasParentheses) {
-		return matchWithWildcard(text, searchLower) || matchWithWildcard(userName, searchLower);
-	}
-
-	// Paso 4: Procesar paréntesis (evaluar expresiones anidadas)
-	function evaluateExpression(expr) {
-		expr = expr.trim();
-
-		// Procesar paréntesis primero
-		while (expr.includes('(')) {
-			const parenRegex = /\(([^()]+)\)/;
-			const parenMatch = expr.match(parenRegex);
-
-			if (!parenMatch) break;
-
-			const innerExpr = parenMatch[1];
-			const innerResult = evaluateExpression(innerExpr);
-
-			// Reemplazar paréntesis con resultado temporal
-			expr = expr.replace(parenRegex, innerResult ? '__TRUE__' : '__FALSE__');
-		}
-
-		// Procesar NOT
-		let notTerms = [];
-		if (expr.includes(' not ')) {
-			const notParts = expr.split(' not ');
-			expr = notParts[0];
-
-			for (let i = 1; i < notParts.length; i++) {
-				let notTerm = notParts[i].split(' and ')[0].split(' or ')[0].trim();
-				notTerms.push(notTerm);
-			}
-
-			// Verificar términos NOT
-			for (let notTerm of notTerms) {
-				if (notTerm === '__TRUE__' ||
-					matchWithWildcard(text, notTerm) ||
-					matchWithWildcard(userName, notTerm)) {
-					return false;
+		if (char === '"') {
+			if (inQuotes) {
+				// Fin de frase exacta
+				tokens.push({ type: 'phrase', value: current.trim() });
+				current = '';
+				inQuotes = false;
+			} else {
+				// Inicio de frase exacta
+				if (current.trim()) {
+					tokens.push(...tokenizeWords(current.trim()));
+					current = '';
 				}
+				inQuotes = true;
 			}
+		} else if (inQuotes) {
+			current += char;
+		} else if (char === '(' || char === ')') {
+			if (current.trim()) {
+				tokens.push(...tokenizeWords(current.trim()));
+				current = '';
+			}
+			tokens.push({ type: 'paren', value: char });
+		} else if (char === ' ') {
+			if (current.trim()) {
+				tokens.push(...tokenizeWords(current.trim()));
+				current = '';
+			}
+		} else {
+			current += char;
 		}
+	}
 
-		// Procesar OR
-		if (expr.includes(' or ')) {
-			const orParts = expr.split(' or ').map(p => p.trim());
+	if (current.trim()) {
+		tokens.push(...tokenizeWords(current.trim()));
+	}
 
-			for (let orPart of orParts) {
-				if (orPart === '__TRUE__') return true;
-				if (orPart === '__FALSE__') continue;
+	return tokens;
+}
 
-				// Procesar AND dentro de OR
-				if (orPart.includes(' and ')) {
-					const andTerms = orPart.split(' and ').map(t => t.trim()).filter(t => t.length > 0);
-					const allMatch = andTerms.every(term =>
-						term === '__TRUE__' ||
-						matchWithWildcard(text, term) ||
-						matchWithWildcard(userName, term)
-					);
-					if (allMatch) return true;
-				} else {
-					if (matchWithWildcard(text, orPart) || matchWithWildcard(userName, orPart)) {
-						return true;
+// Tokeniza palabras individuales y detecta operadores
+function tokenizeWords(text) {
+	const words = text.split(/\s+/);
+	const tokens = [];
+
+	for (const word of words) {
+		const upperWord = word.toUpperCase();
+		if (upperWord === 'OR' || upperWord === 'AND') {
+			tokens.push({ type: 'operator', value: upperWord });
+		} else if (upperWord === 'NOT') {
+			tokens.push({ type: 'not', value: 'NOT' });
+		} else if (word) {
+			tokens.push({ type: 'word', value: word.toLowerCase() });
+		}
+	}
+
+	return tokens;
+}
+
+// Evalúa los tokens contra un texto
+function evaluateTokens(text, tokens) {
+	if (!tokens || tokens.length === 0) return true;
+	if (!text) return false;
+
+	const textLower = text.toLowerCase();
+	let result = null;
+	let currentOperator = 'AND';
+	let notNext = false;
+
+	for (let i = 0; i < tokens.length; i++) {
+		const token = tokens[i];
+
+		if (token.type === 'paren') {
+			if (token.value === '(') {
+				// Encontrar el cierre del paréntesis
+				let depth = 1;
+				let groupTokens = [];
+				i++;
+
+				while (i < tokens.length && depth > 0) {
+					if (tokens[i].type === 'paren' && tokens[i].value === '(') {
+						depth++;
+					} else if (tokens[i].type === 'paren' && tokens[i].value === ')') {
+						depth--;
+						if (depth === 0) break;
 					}
+					groupTokens.push(tokens[i]);
+					i++;
+				}
+
+				// Evaluar el grupo recursivamente
+				const groupResult = evaluateTokens(textLower, groupTokens);
+				const finalGroupResult = notNext ? !groupResult : groupResult;
+				notNext = false;
+
+				if (result === null) {
+					result = finalGroupResult;
+				} else if (currentOperator === 'OR') {
+					result = result || finalGroupResult;
+				} else {
+					result = result && finalGroupResult;
 				}
 			}
-			return false;
-		}
+		} else if (token.type === 'operator') {
+			currentOperator = token.value;
+		} else if (token.type === 'not') {
+			notNext = true;
+		} else if (token.type === 'phrase') {
+			// Búsqueda de frase exacta
+			const phraseMatch = textLower.includes(token.value.toLowerCase());
+			const finalMatch = notNext ? !phraseMatch : phraseMatch;
+			notNext = false;
 
-		// Procesar AND
-		if (expr.includes(' and ')) {
-			const andTerms = expr.split(' and ').map(t => t.trim()).filter(t => t.length > 0);
-			return andTerms.every(term =>
-				term === '__TRUE__' ||
-				matchWithWildcard(text, term) ||
-				matchWithWildcard(userName, term)
-			);
-		}
+			if (result === null) {
+				result = finalMatch;
+			} else if (currentOperator === 'OR') {
+				result = result || finalMatch;
+			} else {
+				result = result && finalMatch;
+			}
+		} else if (token.type === 'word') {
+			// Búsqueda de palabra individual
+			const wordMatch = textLower.includes(token.value);
+			const finalMatch = notNext ? !wordMatch : wordMatch;
+			notNext = false;
 
-		// Término simple
-		if (expr === '__TRUE__') return true;
-		if (expr === '__FALSE__') return false;
-		return matchWithWildcard(text, expr) || matchWithWildcard(userName, expr);
+			if (result === null) {
+				result = finalMatch;
+			} else if (currentOperator === 'OR') {
+				result = result || finalMatch;
+			} else {
+				result = result && finalMatch;
+			}
+		}
 	}
 
-	return evaluateExpression(searchLower);
+	return result !== null ? result : true;
 }
 
 // Estado de filtros
@@ -202,15 +226,13 @@ export const filteredData = derived(
 		let afterDates = originalCount;
 		let afterNetworks = originalCount;
 
-		// ⚠️ IMPORTANTE: NO aplicamos filtro por searchTerm en el cliente
-		// Razón: BigQuery ya filtró los datos con el searchTerm antes de enviarlos
-		// Aplicar el filtro nuevamente causaría "doble filtrado" y limitaría los datos
-		// El searchTerm se mantiene en $filters solo como referencia/metadata de qué se buscó
-// 		// Filtro por término de búsqueda con operadores lógicos
-// 		if ($filters.searchTerm) {
-// 			filtered = filtered.filter(post => applySearchFilter(post, $filters.searchTerm));
-// 			afterSearchTerm = filtered.length;
-// 		}
+		// Filtro por término de búsqueda con operadores lógicos mejorado
+		// BigQuery trae los datos base, pero el filtrado preciso se hace aquí
+		// Esto permite usar operadores booleanos (OR, NOT) y frases exactas
+		if ($filters.searchTerm) {
+			filtered = filtered.filter(post => applySearchFilter(post, $filters.searchTerm));
+			afterSearchTerm = filtered.length;
+		}
 
 		// Filtro por fechas (mejorado para manejar datos corruptos)
 		if ($filters.dateFrom && $filters.dateTo) {
