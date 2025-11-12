@@ -36,13 +36,15 @@ function applySearchFilter(post, searchTerm) {
 	const userName = (post.user_name || '').toLowerCase();
 	const projectName = (post.name_proyecto || '').toLowerCase();
 
+	// Combinar todos los campos en un solo texto para evaluación
+	// Esto asegura que NOT funcione correctamente en todos los campos
+	const combinedText = `${text} ${userName} ${projectName}`;
+
 	// Parsear la query en tokens
 	const tokens = parseSearchQuery(searchTerm);
 
-	// Evaluar contra todos los campos relevantes
-	return evaluateTokens(text, tokens) ||
-	       evaluateTokens(userName, tokens) ||
-	       evaluateTokens(projectName, tokens);
+	// Evaluar contra el texto combinado
+	return evaluateTokens(combinedText, tokens);
 }
 
 // Parser de búsqueda que tokeniza la query
