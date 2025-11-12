@@ -132,7 +132,25 @@
 			return dateObj.toLocaleDateString('es-CL', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 		} else if (gran === 'week') {
 			const [year, week] = groupKey.split('-W');
-			return `Sem ${week}, ${year}`;
+
+			// Calcular fecha de inicio de la semana (mismo algoritmo que el worker)
+			const oneJan = new Date(year, 0, 1);
+			const dayOfWeek = oneJan.getDay();
+
+			// Calcular días desde inicio del año hasta el inicio de esta semana
+			// El algoritmo del worker agrupa por: Math.ceil((numberOfDays + oneJan.getDay() + 1) / 7)
+			// Para la semana N, queremos el primer día de esa agrupación
+			const daysToAdd = (parseInt(week) - 1) * 7 - dayOfWeek;
+
+			const weekStartDate = new Date(year, 0, 1 + daysToAdd);
+
+			// Formatear la fecha de inicio de la semana
+			return weekStartDate.toLocaleDateString('es-CL', {
+				day: 'numeric',
+				month: 'short',
+				year: 'numeric',
+				timeZone: 'UTC'
+			});
 		} else if (gran === 'month') {
 			const [year, month] = groupKey.split('-');
 			const dateObj = new Date(Date.UTC(year, month - 1, 1));
