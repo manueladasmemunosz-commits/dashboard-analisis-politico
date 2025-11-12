@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Pro - Análisis de Redes Sociales</title>
+
+    <!-- Preload crítico -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" as="style">
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js" as="script">
+
+    <!-- CSS crítico inline para primera renderización -->
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f8fafc;
+            overflow-x: hidden;
+        }
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-size: 1.2rem;
+            color: #64748b;
+        }
+        .dashboard-layout {
+            display: none;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+        }
+        .dashboard-layout.loaded { display: grid; }
+    </style>
+
+    <!-- CSS principal cargado asincrónicamente -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Loading inicial -->
+    <div id="loading" class="loading">
+        <div>Cargando Dashboard...</div>
+    </div>
+
+    <!-- Dashboard principal -->
+    <div id="dashboard" class="dashboard-layout">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h1>Dashboard Pro</h1>
+                <p class="subtitle">Análisis de Redes Sociales</p>
+            </div>
+
+            <!-- Upload Section -->
+            <div class="upload-section">
+                <label for="csvFile" class="upload-btn">
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z"></path>
+                    </svg>
+                    Cargar archivo CSV
+                </label>
+                <input type="file" id="csvFile" accept=".csv" style="display: none;">
+                <div id="fileInfo" class="file-info" style="display: none;"></div>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <div class="nav-tabs">
+                <button class="nav-tab active" data-view="analytics">Analytics</button>
+                <button class="nav-tab" data-view="wordcloud">Word Cloud</button>
+            </div>
+
+            <!-- Quick Stats -->
+            <div id="quickStats" class="quick-stats" style="display: none;">
+                <div class="stat-item">
+                    <span class="stat-label">Posts</span>
+                    <span class="stat-value" id="totalPosts">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Engagement</span>
+                    <span class="stat-value" id="engagementRate">0%</span>
+                </div>
+            </div>
+
+            <!-- Export Section -->
+            <div id="exportSection" class="export-section" style="display: none;">
+                <h3>Exportar</h3>
+                <button id="exportCSV" class="export-btn">Descargar CSV</button>
+                <button id="exportJSON" class="export-btn">Descargar JSON</button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Analytics View -->
+            <section id="analytics-view" class="view active">
+                <div class="view-header">
+                    <h2>Panel de Analytics</h2>
+                    <div class="view-controls">
+                        <select id="timeFilter">
+                            <option value="all">Todos los datos</option>
+                            <option value="week">Última semana</option>
+                            <option value="month">Último mes</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <h3>Total Posts</h3>
+                        <div class="metric-value" id="totalPostsMain">0</div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Total Likes</h3>
+                        <div class="metric-value" id="totalLikes">0</div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Total Replies</h3>
+                        <div class="metric-value" id="totalReplies">0</div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Avg. Engagement</h3>
+                        <div class="metric-value" id="avgEngagement">0</div>
+                    </div>
+                </div>
+
+                <div class="charts-container">
+                    <div class="chart-wrapper">
+                        <h3>Timeline de Actividad</h3>
+                        <canvas id="timelineChart"></canvas>
+                    </div>
+                    <div class="chart-wrapper">
+                        <h3>Top Posts por Engagement</h3>
+                        <canvas id="topPostsChart"></canvas>
+                    </div>
+                    <div class="chart-wrapper">
+                        <h3>Análisis de Engagement</h3>
+                        <canvas id="engagementChart"></canvas>
+                    </div>
+                    <div class="chart-wrapper">
+                        <h3>Usuarios Más Activos</h3>
+                        <canvas id="activeUsersChart"></canvas>
+                    </div>
+                    <div class="chart-wrapper">
+                        <h3>Análisis de Sentimientos</h3>
+                        <canvas id="sentimentChart"></canvas>
+                    </div>
+                    <div class="chart-wrapper">
+                        <h3>Hashtags Principales</h3>
+                        <canvas id="hashtagsChart"></canvas>
+                    </div>
+                    <div class="chart-wrapper">
+                        <h3>Red de Menciones</h3>
+                        <canvas id="mentionsChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Word Cloud View -->
+            <section id="wordcloud-view" class="view">
+                <div class="view-header">
+                    <h2>Nube de Palabras</h2>
+                    <div class="view-controls">
+                        <input type="number" id="maxWords" min="10" max="200" value="50" placeholder="Max palabras">
+                        <button id="regenerateCloud">Regenerar</button>
+                    </div>
+                </div>
+
+                <div class="wordcloud-container">
+                    <canvas id="wordcloudCanvas" width="800" height="600"></canvas>
+                </div>
+
+                <div class="wordcloud-info">
+                    <div class="excluded-words" id="excludedWords" style="display: none;">
+                        <h4>Palabras Excluidas:</h4>
+                        <div class="word-tags" id="excludedTags"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Scripts cargados de forma optimizada -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js" defer></script>
+    <script src="dashboard-core.js" defer></script>
+    <script src="analytics-module.js" defer></script>
+    <script src="wordcloud-module.js" defer></script>
+
+    <script>
+        // Script crítico inline para inicialización rápida
+        document.addEventListener('DOMContentLoaded', function() {
+            // Ocultar loading cuando todo esté cargado
+            window.addEventListener('load', function() {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard').classList.add('loaded');
+            });
+
+            // Navegación básica
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const view = this.dataset.view;
+                    switchView(view);
+                });
+            });
+        });
+
+        function switchView(viewName) {
+            // Remover active de tabs y views
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+
+            // Activar seleccionados
+            document.querySelector(`[data-view="${viewName}"]`).classList.add('active');
+            document.getElementById(`${viewName}-view`).classList.add('active');
+        }
+    </script>
+</body>
+</html>

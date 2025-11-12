@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Search Parser</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+        .query-input {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            margin-bottom: 15px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+        }
+        .text-input {
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+            margin-bottom: 15px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            min-height: 80px;
+            font-family: monospace;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .result.match {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .result.no-match {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .tokens {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .example {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffc107;
+        }
+        .example-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Test de Parser de Búsqueda Avanzada</h1>
+
+        <div class="example">
+            <div class="example-title">Ejemplos de Queries:</div>
+            <ul>
+                <li><code>(SML OR "servicio medico legal") NOT PDI</code></li>
+                <li><code>"José Antonio Kast" AND (delincuencia OR seguridad)</code></li>
+                <li><code>Bachelet NOT "Michelle Bachelet"</code></li>
+                <li><code>(crisis OR emergencia) AND hospital NOT "falsa alarma"</code></li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h2>Probar Query</h2>
+            <input type="text"
+                   class="query-input"
+                   id="queryInput"
+                   placeholder='Ejemplo: (SML OR "servicio medico legal") NOT PDI'
+                   value='(SML OR "servicio medico legal") NOT PDI'>
+
+            <textarea class="text-input"
+                      id="textInput"
+                      placeholder="Texto a buscar...">El Servicio Medico Legal informó sobre los resultados del caso investigado.</textarea>
+
+            <button onclick="testSearch()">Evaluar Búsqueda</button>
+
+            <div id="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Casos de Prueba Predefinidos</h2>
+            <button onclick="runAllTests()">Ejecutar Todos los Tests</button>
+            <div id="testResults" style="margin-top: 20px;"></div>
+        </div>
+    </div>
+
+    <script>
+        // ========== PARSER DE BÚSQUEDA AVANZADA ==========
+        function parseSearchQuery(query) {
+            const tokens = [];
+            let current = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < query.length; i++) {
+                const char = query[i];
+
+                if (char === '"') {
+                    if (inQuotes) {
+                        tokens.push({ type: 'phrase', value: current.trim() });
+                        current = '';
+                        inQuotes = false;
+                    } else {
+                        if (current.trim()) {
+                            tokens.push(...tokenizeWords(current.trim()));
+                            current = '';
+                        }
+                        inQuotes = true;
+                    }
+                } else if (inQuotes) {
+                    current += char;
+                } else if (char === '(' || char === ')') {
+                    if (current.trim()) {
+                        tokens.push(...tokenizeWords(current.trim()));
+                        current = '';
+                    }
+                    tokens.push({ type: 'paren', value: char });
+                } else if (char === ' ') {
+                    if (current.trim()) {
+                        tokens.push(...tokenizeWords(current.trim()));
+                        current = '';
+                    }
+                } else {
+                    current += char;
+                }
+            }
+
+            if (current.trim()) {
+                tokens.push(...tokenizeWords(current.trim()));
+            }
+
+            return tokens;
+        }
+
+        function tokenizeWords(text) {
+            const words = text.split(/\s+/);
+            const tokens = [];
+
+            for (const word of words) {
+                const upperWord = word.toUpperCase();
+                if (upperWord === 'OR' || upperWord === 'AND') {
+                    tokens.push({ type: 'operator', value: upperWord });
+                } else if (upperWord === 'NOT') {
+                    tokens.push({ type: 'not', value: 'NOT' });
+                } else if (word) {
+                    tokens.push({ type: 'word', value: word.toLowerCase() });
+                }
+            }
+
+            return tokens;
+        }
+
+        function evaluateSearchQuery(text, tokens) {
+            if (!tokens || tokens.length === 0) return true;
+            if (!text) return false;
+
+            const textLower = text.toLowerCase();
+
+            let result = null;
+            let currentOperator = 'AND';
+            let notNext = false;
+
+            for (let i = 0; i < tokens.length; i++) {
+                const token = tokens[i];
+
+                if (token.type === 'paren') {
+                    if (token.value === '(') {
+                        let depth = 1;
+                        let groupTokens = [];
+                        i++;
+
+                        while (i < tokens.length && depth > 0) {
+                            if (tokens[i].type === 'paren' && tokens[i].value === '(') {
+                                depth++;
+                            } else if (tokens[i].type === 'paren' && tokens[i].value === ')') {
+                                depth--;
+                                if (depth === 0) break;
+                            }
+                            groupTokens.push(tokens[i]);
+                            i++;
+                        }
+
+                        const groupResult = evaluateSearchQuery(textLower, groupTokens);
+                        const finalGroupResult = notNext ? !groupResult : groupResult;
+                        notNext = false;
+
+                        if (result === null) {
+                            result = finalGroupResult;
+                        } else if (currentOperator === 'OR') {
+                            result = result || finalGroupResult;
+                        } else {
+                            result = result && finalGroupResult;
+                        }
+                    }
+                } else if (token.type === 'operator') {
+                    currentOperator = token.value;
+                } else if (token.type === 'not') {
+                    notNext = true;
+                } else if (token.type === 'phrase') {
+                    const phraseMatch = textLower.includes(token.value.toLowerCase());
+                    const finalMatch = notNext ? !phraseMatch : phraseMatch;
+                    notNext = false;
+
+                    if (result === null) {
+                        result = finalMatch;
+                    } else if (currentOperator === 'OR') {
+                        result = result || finalMatch;
+                    } else {
+                        result = result && finalMatch;
+                    }
+                } else if (token.type === 'word') {
+                    const wordMatch = textLower.includes(token.value);
+                    const finalMatch = notNext ? !wordMatch : wordMatch;
+                    notNext = false;
+
+                    if (result === null) {
+                        result = finalMatch;
+                    } else if (currentOperator === 'OR') {
+                        result = result || finalMatch;
+                    } else {
+                        result = result && finalMatch;
+                    }
+                }
+            }
+
+            return result !== null ? result : true;
+        }
+
+        // ========== TEST FUNCTIONS ==========
+        function testSearch() {
+            const query = document.getElementById('queryInput').value;
+            const text = document.getElementById('textInput').value;
+
+            const tokens = parseSearchQuery(query);
+            const matches = evaluateSearchQuery(text, tokens);
+
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'result ' + (matches ? 'match' : 'no-match');
+            resultDiv.innerHTML = `
+                <div style="font-size: 18px; margin-bottom: 10px;">
+                    ${matches ? '✅ MATCH' : '❌ NO MATCH'}
+                </div>
+                <div class="tokens">
+                    <strong>Tokens:</strong> ${JSON.stringify(tokens, null, 2)}
+                </div>
+            `;
+        }
+
+        function runAllTests() {
+            const tests = [
+                {
+                    name: 'Test 1: Query original del usuario',
+                    query: '(SML OR "servicio medico legal") NOT PDI',
+                    cases: [
+                        { text: 'El SML informó sobre el caso', expected: true },
+                        { text: 'El Servicio Medico Legal confirmó los resultados', expected: true },
+                        { text: 'Servicio medico y legal en hospitales', expected: false }, // Palabras separadas, no frase exacta
+                        { text: 'El SML y la PDI trabajan juntos', expected: false }, // Tiene PDI
+                        { text: 'La PDI investiga el caso del servicio medico legal', expected: false }, // Tiene PDI
+                        { text: 'Análisis del servicio medico legal del caso', expected: true }
+                    ]
+                },
+                {
+                    name: 'Test 2: Operador NOT simple',
+                    query: 'hospital NOT privado',
+                    cases: [
+                        { text: 'El hospital público atiende pacientes', expected: true },
+                        { text: 'El hospital privado cobra más', expected: false },
+                        { text: 'Inauguran nuevo hospital', expected: true }
+                    ]
+                },
+                {
+                    name: 'Test 3: Frase exacta con comillas',
+                    query: '"José Antonio Kast"',
+                    cases: [
+                        { text: 'José Antonio Kast dio un discurso', expected: true },
+                        { text: 'José declaró que Antonio y Kast son amigos', expected: false },
+                        { text: 'El candidato José Antonio Kast lidera las encuestas', expected: true }
+                    ]
+                },
+                {
+                    name: 'Test 4: OR con múltiples términos',
+                    query: 'Bachelet OR Piñera OR Boric',
+                    cases: [
+                        { text: 'Bachelet fue presidenta', expected: true },
+                        { text: 'Piñera asumió el cargo', expected: true },
+                        { text: 'Boric ganó las elecciones', expected: true },
+                        { text: 'Lagos fue presidente', expected: false }
+                    ]
+                }
+            ];
+
+            let html = '';
+            let totalTests = 0;
+            let passedTests = 0;
+
+            tests.forEach((testGroup, groupIndex) => {
+                html += `<div style="margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 5px;">`;
+                html += `<h3 style="color: #333; margin-bottom: 15px;">${testGroup.name}</h3>`;
+                html += `<div style="font-family: monospace; background: #e9ecef; padding: 10px; border-radius: 3px; margin-bottom: 15px;">Query: <strong>${testGroup.query}</strong></div>`;
+
+                const tokens = parseSearchQuery(testGroup.query);
+
+                testGroup.cases.forEach((testCase, caseIndex) => {
+                    totalTests++;
+                    const result = evaluateSearchQuery(testCase.text, tokens);
+                    const passed = result === testCase.expected;
+                    if (passed) passedTests++;
+
+                    html += `<div style="padding: 10px; margin-bottom: 10px; border-left: 4px solid ${passed ? '#28a745' : '#dc3545'}; background: white;">`;
+                    html += `<div style="font-weight: bold; color: ${passed ? '#28a745' : '#dc3545'};">${passed ? '✅' : '❌'} Caso ${caseIndex + 1}</div>`;
+                    html += `<div style="margin: 5px 0;"><strong>Texto:</strong> "${testCase.text}"</div>`;
+                    html += `<div style="margin: 5px 0;"><strong>Esperado:</strong> ${testCase.expected ? 'MATCH' : 'NO MATCH'} | <strong>Obtenido:</strong> ${result ? 'MATCH' : 'NO MATCH'}</div>`;
+                    html += `</div>`;
+                });
+
+                html += `</div>`;
+            });
+
+            html = `<div style="background: ${passedTests === totalTests ? '#d4edda' : '#f8d7da'}; padding: 20px; border-radius: 5px; margin-bottom: 20px; text-align: center;">
+                        <h2 style="margin: 0; color: ${passedTests === totalTests ? '#155724' : '#721c24'};">
+                            ${passedTests} / ${totalTests} Tests Pasados ${passedTests === totalTests ? '🎉' : ''}
+                        </h2>
+                    </div>` + html;
+
+            document.getElementById('testResults').innerHTML = html;
+        }
+    </script>
+</body>
+</html>

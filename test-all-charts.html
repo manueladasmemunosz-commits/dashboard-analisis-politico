@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Completo Dashboard con Todos los Gráficos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #ccc;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border-left-color: #28a745;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border-left-color: #dc3545;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border-left-color: #17a2b8;
+        }
+        .warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border-left-color: #ffc107;
+        }
+        #testLog {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .btn:hover { background: #0056b3; }
+        .btn-success { background: #28a745; }
+        .btn-danger { background: #dc3545; }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-box {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Test Completo: Dashboard con Todos los Gráficos Restaurados</h1>
+        <p><strong>Objetivo:</strong> Verificar que todos los gráficos del dashboard original fueron restaurados y funcionan correctamente.</p>
+
+        <div class="stats-container">
+            <div class="stat-box">
+                <div class="stat-number" id="totalTests">0</div>
+                <div class="stat-label">Tests Ejecutados</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="passedTests">0</div>
+                <div class="stat-label">Tests Exitosos</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="failedTests">0</div>
+                <div class="stat-label">Tests Fallidos</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="successRate">0%</div>
+                <div class="stat-label">Tasa de Éxito</div>
+            </div>
+        </div>
+
+        <button onclick="runCompleteTest()" class="btn">🚀 Ejecutar Test Completo</button>
+        <button onclick="clearResults()" class="btn btn-danger">🧹 Limpiar Resultados</button>
+
+        <div id="results"></div>
+
+        <h2>📊 Log Detallado:</h2>
+        <div id="testLog"></div>
+    </div>
+
+    <!-- Scripts necesarios -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="report-generator.js"></script>
+    <script src="dashboard-core.js"></script>
+    <script src="analytics-module.js"></script>
+    <script src="wordcloud-module.js"></script>
+
+    <script>
+        const results = document.getElementById('results');
+        const testLog = document.getElementById('testLog');
+        let testsPassed = 0;
+        let testsFailed = 0;
+        let totalTests = 0;
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            console.log(`[${timestamp}] ${message}`);
+            testLog.textContent += `[${timestamp}] ${message}\n`;
+            testLog.scrollTop = testLog.scrollHeight;
+        }
+
+        function addResult(message, success, type = 'test') {
+            const div = document.createElement('div');
+            div.className = `test-result ${success ? 'success' : 'error'}`;
+
+            let icon = success ? '✅' : '❌';
+            if (type === 'warning') {
+                div.className = 'test-result warning';
+                icon = '⚠️';
+            } else if (type === 'info') {
+                div.className = 'test-result info';
+                icon = 'ℹ️';
+            }
+
+            div.innerHTML = `${icon} ${message}`;
+            results.appendChild(div);
+
+            if (type === 'test') {
+                if (success) {
+                    testsPassed++;
+                } else {
+                    testsFailed++;
+                }
+                totalTests++;
+                updateStats();
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('totalTests').textContent = totalTests;
+            document.getElementById('passedTests').textContent = testsPassed;
+            document.getElementById('failedTests').textContent = testsFailed;
+
+            const rate = totalTests > 0 ? ((testsPassed / totalTests) * 100).toFixed(1) : '0';
+            document.getElementById('successRate').textContent = rate + '%';
+        }
+
+        function clearResults() {
+            results.innerHTML = '';
+            testLog.textContent = '';
+            testsPassed = 0;
+            testsFailed = 0;
+            totalTests = 0;
+            updateStats();
+        }
+
+        // Tests principales
+        async function runCompleteTest() {
+            log('=== INICIANDO TEST COMPLETO DE DASHBOARD ===');
+            clearResults();
+
+            addResult('Test Suite Iniciado - Verificando Dashboard con Todos los Gráficos', true, 'info');
+
+            // Test 1: Verificar disponibilidad de librerías
+            await testLibrariesAvailable();
+
+            // Test 2: Verificar módulos del dashboard
+            await testDashboardModules();
+
+            // Test 3: Verificar CSV con hashtags y menciones
+            await testEnhancedCSV();
+
+            // Test 4: Simular carga de datos y verificar gráficos
+            await testAllCharts();
+
+            // Test 5: Verificar funcionalidad de word cloud
+            await testWordCloudFunctionality();
+
+            // Test 6: Verificar exportación de reportes
+            await testReportGeneration();
+
+            // Resultado final
+            setTimeout(() => {
+                log(`=== RESUMEN FINAL ===`);
+                log(`Tests ejecutados: ${totalTests}`);
+                log(`Tests exitosos: ${testsPassed}`);
+                log(`Tests fallidos: ${testsFailed}`);
+                log(`Tasa de éxito: ${((testsPassed/totalTests)*100).toFixed(1)}%`);
+
+                const finalMessage = testsFailed === 0 ?
+                    '🎉 TODOS LOS TESTS PASARON - Dashboard completamente funcional' :
+                    `⚠️ ${testsFailed} tests fallaron - Revisar funcionalidades`;
+
+                addResult(finalMessage, testsFailed === 0, 'info');
+            }, 500);
+        }
+
+        async function testLibrariesAvailable() {
+            log('Test 1: Verificando librerías disponibles...');
+
+            // PapaParse
+            if (typeof Papa !== 'undefined') {
+                addResult('PapaParse cargado correctamente', true);
+            } else {
+                addResult('PapaParse no disponible', false);
+            }
+
+            // Chart.js
+            if (typeof Chart !== 'undefined') {
+                addResult('Chart.js cargado correctamente', true);
+            } else {
+                addResult('Chart.js no disponible', false);
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        async function testDashboardModules() {
+            log('Test 2: Verificando módulos del dashboard...');
+
+            // Dashboard Core
+            if (typeof DashboardCore !== 'undefined' || window.DashboardCore) {
+                addResult('DashboardCore module disponible', true);
+            } else {
+                addResult('DashboardCore module no encontrado', false);
+            }
+
+            // Analytics Module
+            if (typeof AnalyticsModule !== 'undefined' || window.AnalyticsModule) {
+                addResult('AnalyticsModule disponible', true);
+            } else {
+                addResult('AnalyticsModule no encontrado', false);
+            }
+
+            // WordCloud Module
+            if (typeof WordcloudModule !== 'undefined' || window.WordcloudModule) {
+                addResult('WordcloudModule disponible', true);
+            } else {
+                addResult('WordcloudModule no encontrado', false);
+            }
+
+            // Report Generator
+            if (typeof ReportGenerator !== 'undefined') {
+                addResult('ReportGenerator disponible', true);
+            } else {
+                addResult('ReportGenerator no encontrado', false);
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        async function testEnhancedCSV() {
+            log('Test 3: Verificando CSV mejorado con hashtags y menciones...');
+
+            try {
+                const response = await fetch('sample-data.csv');
+                if (response.ok) {
+                    const csvText = await response.text();
+
+                    // Verificar hashtags
+                    const hashtagMatches = (csvText.match(/#\w+/g) || []).length;
+                    if (hashtagMatches > 0) {
+                        addResult(`CSV contiene ${hashtagMatches} hashtags`, true);
+                    } else {
+                        addResult('CSV no contiene hashtags', false);
+                    }
+
+                    // Verificar menciones
+                    const mentionMatches = (csvText.match(/@\w+/g) || []).length;
+                    if (mentionMatches > 0) {
+                        addResult(`CSV contiene ${mentionMatches} menciones`, true);
+                    } else {
+                        addResult('CSV no contiene menciones', false);
+                    }
+
+                    // Verificar estructura
+                    if (csvText.includes('likes,replies,text,date')) {
+                        addResult('Estructura CSV correcta', true);
+                    } else {
+                        addResult('Estructura CSV incorrecta', false);
+                    }
+
+                } else {
+                    addResult('Error cargando CSV de muestra', false);
+                }
+            } catch (error) {
+                addResult(`Error en test CSV: ${error.message}`, false);
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        async function testAllCharts() {
+            log('Test 4: Verificando que todos los gráficos pueden ser creados...');
+
+            const expectedCharts = [
+                'timelineChart',
+                'topPostsChart',
+                'engagementChart',
+                'activeUsersChart',
+                'sentimentChart',
+                'hashtagsChart',
+                'mentionsChart'
+            ];
+
+            // Verificar que existen los canvas elements
+            expectedCharts.forEach(chartId => {
+                const canvas = document.getElementById(chartId);
+                if (canvas) {
+                    addResult(`Canvas para ${chartId} encontrado`, true);
+                } else {
+                    addResult(`Canvas para ${chartId} NO encontrado`, false);
+                }
+            });
+
+            // Simular creación de gráficos
+            if (typeof Chart !== 'undefined') {
+                try {
+                    const testCanvas = document.createElement('canvas');
+                    testCanvas.width = 400;
+                    testCanvas.height = 200;
+
+                    const testChart = new Chart(testCanvas, {
+                        type: 'bar',
+                        data: {
+                            labels: ['Test 1', 'Test 2'],
+                            datasets: [{
+                                label: 'Test Data',
+                                data: [10, 20],
+                                backgroundColor: '#3b82f6'
+                            }]
+                        },
+                        options: {
+                            animation: false
+                        }
+                    });
+
+                    if (testChart) {
+                        addResult('Chart.js puede crear gráficos correctamente', true);
+                        testChart.destroy();
+                    }
+                } catch (error) {
+                    addResult(`Error creando gráfico de prueba: ${error.message}`, false);
+                }
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        async function testWordCloudFunctionality() {
+            log('Test 5: Verificando funcionalidad de Word Cloud...');
+
+            const wordcloudCanvas = document.getElementById('wordcloudCanvas');
+            if (wordcloudCanvas) {
+                addResult('Canvas de Word Cloud encontrado', true);
+
+                // Verificar que tiene contexto
+                const ctx = wordcloudCanvas.getContext('2d');
+                if (ctx) {
+                    addResult('Contexto 2D de Word Cloud disponible', true);
+                } else {
+                    addResult('Error obteniendo contexto 2D', false);
+                }
+            } else {
+                addResult('Canvas de Word Cloud NO encontrado', false);
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        async function testReportGeneration() {
+            log('Test 6: Verificando generación de reportes...');
+
+            if (typeof ReportGenerator !== 'undefined') {
+                try {
+                    const generator = new ReportGenerator();
+
+                    // Datos de prueba
+                    const testData = [
+                        {
+                            likes: 50,
+                            replies: 10,
+                            text: 'Test post con #hashtag y @mencion',
+                            date: '2024-01-01',
+                            engagement: 60
+                        }
+                    ];
+
+                    // Simular procesamiento de datos
+                    const reportData = {
+                        analytics: {
+                            totalPosts: 1,
+                            totalLikes: 50,
+                            totalReplies: 10,
+                            engagementRate: '60.0',
+                            topPosts: testData
+                        },
+                        wordcloud: {
+                            uniqueWords: 5,
+                            topWords: [
+                                { word: 'test', count: 1 },
+                                { word: 'hashtag', count: 1 }
+                            ]
+                        }
+                    };
+
+                    // Test CSV report
+                    const csvReport = generator.generateCSVReport(reportData);
+                    if (csvReport && csvReport.format === 'csv' && csvReport.data.includes('Total Posts,1')) {
+                        addResult('Generación de reportes CSV funciona', true);
+                    } else {
+                        addResult('Error en generación de reportes CSV', false);
+                    }
+
+                    // Test JSON report
+                    const jsonReport = generator.generateJSONReport(reportData);
+                    if (jsonReport && jsonReport.format === 'json') {
+                        addResult('Generación de reportes JSON funciona', true);
+                    } else {
+                        addResult('Error en generación de reportes JSON', false);
+                    }
+
+                } catch (error) {
+                    addResult(`Error en test de reportes: ${error.message}`, false);
+                }
+            } else {
+                addResult('ReportGenerator no disponible para testing', false);
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        // Ejecutar test automáticamente al cargar
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                log('Página cargada, esperando 2 segundos para ejecutar tests...');
+                setTimeout(runCompleteTest, 2000);
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

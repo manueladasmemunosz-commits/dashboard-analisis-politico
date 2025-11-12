@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Pro Completo - Análisis Completo de Redes Sociales</title>
+
+    <!-- Preload crítico -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" as="style">
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js" as="script">
+
+    <!-- CSS crítico inline -->
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .loading {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-size: 1.2rem;
+            color: white;
+            text-align: center;
+        }
+        .dashboard-layout {
+            display: none;
+            grid-template-areas:
+                "header"
+                "nav"
+                "main";
+            grid-template-columns: 1fr;
+            grid-template-rows: auto auto 1fr;
+            min-height: 100vh;
+            background: var(--chile-gray-50, #f8fafc);
+        }
+        .dashboard-layout.loaded { display: grid; }
+    </style>
+
+    <!-- CSS principal cargado asincrónicamente -->
+    <link rel="stylesheet" href="dashboard-chileno.css">
+</head>
+<body>
+    <!-- Loading inicial -->
+    <div id="loading" class="loading">
+        <h2>🚀 Dashboard Profesional Completo</h2>
+        <p>Análisis completo de redes sociales con visualizaciones avanzadas</p>
+        <p style="margin-top: 20px; opacity: 0.8;">Cargando componentes...</p>
+    </div>
+
+    <!-- Dashboard principal -->
+    <div id="dashboard" class="dashboard-layout">
+        <!-- Header Unificado - Controles + KPIs -->
+        <div class="unified-header">
+            <!-- Sección de Controles -->
+            <div class="header-controls">
+                <!-- Data Sources -->
+                <div class="control-group">
+                    <div class="bigquery-search-inline">
+                        <input type="text" id="searchQuery" class="search-input-header" placeholder="Buscar: Milei, Bachelet..." />
+                        <input type="date" id="dateFrom" class="date-input-header" placeholder="Desde" />
+                        <input type="date" id="dateTo" class="date-input-header" placeholder="Hasta" />
+                        <button class="btn-search" onclick="executeBigQuerySearch()">🔍</button>
+                    </div>
+                    <div class="csv-upload-inline">
+                        <input type="file" id="csvFile" accept=".csv" class="file-input-header" />
+                        <button class="btn-secondary" onclick="loadSampleData()">📊 Demo</button>
+                    </div>
+                </div>
+
+                <!-- Filtros Principales -->
+                <div class="control-group">
+                    <select class="filter-select" id="headerProjectFilter">
+                        <option value="all">Todos los Proyectos</option>
+                    </select>
+                    <select class="filter-select" id="headerMediaFilter">
+                        <option value="all">Todos los Medios</option>
+                    </select>
+                    <select class="filter-select" id="headerDateFilter" onchange="applyDateFilter(this.value)">
+                        <option value="all">Todo el Tiempo</option>
+                        <option value="today">Hoy</option>
+                        <option value="yesterday">Ayer</option>
+                        <option value="7days">Últimos 7 días</option>
+                        <option value="15days">Últimos 15 días</option>
+                        <option value="30days">Últimos 30 días</option>
+                        <option value="60days">Últimos 60 días</option>
+                        <option value="90days">Últimos 90 días</option>
+                        <option value="custom">🗓️ Rango Personalizado</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Sección de KPIs -->
+            <div class="header-kpis">
+                <div class="kpi-card">
+                    <div class="kpi-icon">📊</div>
+                    <div class="kpi-content">
+                        <span class="kpi-value" id="headerTotalPosts">-</span>
+                        <span class="kpi-label">Posts</span>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon">👥</div>
+                    <div class="kpi-content">
+                        <span class="kpi-value" id="headerUniqueUsers">-</span>
+                        <span class="kpi-label">Users</span>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon">❤️</div>
+                    <div class="kpi-content">
+                        <span class="kpi-value" id="headerTotalLikes">-</span>
+                        <span class="kpi-label">Likes</span>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon">💬</div>
+                    <div class="kpi-content">
+                        <span class="kpi-value" id="headerEngagement">-</span>
+                        <span class="kpi-label">Engagement</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="nav-tabs" style="grid-area: nav;">
+            <button class="nav-tab active" onclick="showView('analytics')">
+                📊 Dashboard
+            </button>
+            <div style="margin-left: auto; display: flex; gap: 1rem;">
+                <button class="widget-btn" onclick="loadSampleData()">🎯 Demo</button>
+                <button class="widget-btn" onclick="refreshAllData()">🔄 Actualizar</button>
+                <button class="widget-btn danger" onclick="resetAllFilters()">🗑️ Reset</button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Analytics Content -->
+            <div id="analytics-content" class="content-section">
+                <!-- Section Navigation -->
+                <div class="section-nav">
+                    <a href="#timeline-section" class="section-link">📅 Timeline</a>
+                    <a href="#performance-section" class="section-link">🏆 Performance</a>
+                    <a href="#engagement-section" class="section-link">💬 Engagement</a>
+                    <a href="#users-section" class="section-link">👥 Users</a>
+                    <a href="#wordcloud-section" class="section-link">☁️ WordCloud</a>
+                    <a href="#network-section" class="section-link">🕸️ Network</a>
+                </div>
+
+                <!-- Timeline Section -->
+                <div id="timeline-section" class="analysis-section">
+                    <div class="section-header">
+                        <h2 class="section-title">📅 Análisis Timeline</h2>
+                        <p class="section-description">Evolución temporal de posts y engagement</p>
+                    </div>
+                    <div class="charts-row">
+                    <!-- Timeline Chart -->
+                    <div class="chart-widget">
+                        <div class="widget-header">
+                            <h3 class="widget-title">📅 Timeline Analytics</h3>
+                            <div class="widget-controls">
+                                <div class="control-row">
+                                    <span class="control-label-small">Fecha desde:</span>
+                                    <input type="date" class="chart-date-selector" value="2025-08-01" onchange="updateChartData('timeline')">
+                                    <span class="control-label-small">Fecha hasta:</span>
+                                    <input type="date" class="chart-date-selector" onchange="updateChartData('timeline')">
+                                </div>
+                                <div class="control-row">
+                                    <span class="control-label-small">Tipo:</span>
+                                    <select class="chart-type-selector" onchange="updateChartType('timeline', this.value)">
+                                        <option value="line">Línea</option>
+                                        <option value="bar">Barras</option>
+                                        <option value="area">Área</option>
+                                    </select>
+                                    <span class="control-label-small">Red Social:</span>
+                                    <select class="chart-social-selector" onchange="updateChartData('timeline')">
+                                        <option value="all">Todas</option>
+                                        <option value="twitter">Twitter</option>
+                                        <option value="facebook">Facebook</option>
+                                        <option value="instagram">Instagram</option>
+                                        <option value="linkedin">LinkedIn</option>
+                                    </select>
+                                    <span class="control-label-small">Por:</span>
+                                    <select class="date-selector" onchange="updateTimelineAxis(this.value)">
+                                        <option value="daily">Diario</option>
+                                        <option value="weekly">Semanal</option>
+                                        <option value="monthly">Mensual</option>
+                                    </select>
+                                </div>
+                                <div class="control-row">
+                                    <span class="control-label-small">Color:</span>
+                                    <input type="color" class="color-picker" value="#667eea" onchange="updateChartColor('timeline', this.value)">
+                                    <button class="widget-btn" onclick="updateChart('timeline')">Actualizar</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="timelineChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Top Posts Chart -->
+                    <div class="chart-widget">
+                        <div class="widget-header">
+                            <h3 class="widget-title">🏆 Top Performance Posts</h3>
+                            <div class="widget-controls">
+                                <div class="control-row">
+                                    <span class="control-label-small">Fecha desde:</span>
+                                    <input type="date" class="chart-date-selector" value="2025-08-01" onchange="updateChartData('topPosts')">
+                                    <span class="control-label-small">Fecha hasta:</span>
+                                    <input type="date" class="chart-date-selector" onchange="updateChartData('topPosts')">
+                                </div>
+                                <div class="control-row">
+                                    <span class="control-label-small">Tipo:</span>
+                                    <select class="chart-type-selector" onchange="updateChartType('topPosts', this.value)">
+                                        <option value="bar">Barras</option>
+                                        <option value="horizontalBar">Barras H.</option>
+                                        <option value="doughnut">Donut</option>
+                                    </select>
+                                    <span class="control-label-small">Red Social:</span>
+                                    <select class="chart-social-selector" onchange="updateChartData('topPosts')">
+                                        <option value="all">Todas</option>
+                                        <option value="twitter">Twitter</option>
+                                        <option value="facebook">Facebook</option>
+                                        <option value="instagram">Instagram</option>
+                                        <option value="linkedin">LinkedIn</option>
+                                    </select>
+                                    <span class="control-label-small">Top:</span>
+                                    <select class="social-selector" onchange="updateChartLimit('topPosts', this.value)">
+                                        <option value="5">5</option>
+                                        <option value="10" selected>10</option>
+                                        <option value="15">15</option>
+                                        <option value="20">20</option>
+                                    </select>
+                                </div>
+                                <div class="control-row">
+                                    <span class="control-label-small">Color:</span>
+                                    <input type="color" class="color-picker" value="#667eea" onchange="updateChartColor('topPosts', this.value)">
+                                    <button class="widget-btn" onclick="updateChart('topPosts')">Actualizar</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="topPostsChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Engagement Chart -->
+                    <div class="chart-widget">
+                        <div class="widget-header">
+                            <h3 class="widget-title">💬 Engagement Analysis</h3>
+                            <div class="widget-controls">
+                                <div class="control-row">
+                                    <span class="control-label-small">Fecha desde:</span>
+                                    <input type="date" class="chart-date-selector" value="2025-08-01" onchange="updateChartData('engagement')">
+                                    <span class="control-label-small">Fecha hasta:</span>
+                                    <input type="date" class="chart-date-selector" onchange="updateChartData('engagement')">
+                                </div>
+                                <div class="control-row">
+                                    <span class="control-label-small">Tipo:</span>
+                                    <select class="chart-type-selector" onchange="updateChartType('engagement', this.value)">
+                                        <option value="scatter">Dispersión</option>
+                                        <option value="bubble">Burbuja</option>
+                                        <option value="bar">Barras</option>
+                                    </select>
+                                    <span class="control-label-small">Red Social:</span>
+                                    <select class="chart-social-selector" onchange="updateChartData('engagement')">
+                                        <option value="all">Todas</option>
+                                        <option value="twitter">Twitter</option>
+                                        <option value="facebook">Facebook</option>
+                                        <option value="instagram">Instagram</option>
+                                        <option value="linkedin">LinkedIn</option>
+                                    </select>
+                                </div>
+                                <div class="control-row">
+                                    <span class="control-label-small">Color:</span>
+                                    <input type="color" class="color-picker" value="#667eea" onchange="updateChartColor('engagement', this.value)">
+                                    <button class="widget-btn" onclick="updateChart('engagement')">Actualizar</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="engagementChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Active Users Chart -->
+                    <div class="chart-widget">
+                        <div class="widget-header">
+                            <h3 class="widget-title">🔥 Top Active Users</h3>
+                            <div class="widget-controls">
+                                <div class="control-row">
+                                    <span class="control-label-small">Fecha desde:</span>
+                                    <input type="date" class="chart-date-selector" value="2025-08-01" onchange="updateChartData('activeUsers')">
+                                    <span class="control-label-small">Fecha hasta:</span>
+                                    <input type="date" class="chart-date-selector" onchange="updateChartData('activeUsers')">
+                                </div>
+                                <div class="control-row">
+                                    <span class="control-label-small">Tipo:</span>
+                                    <select class="chart-type-selector" onchange="updateChartType('activeUsers', this.value)">
+                                        <option value="doughnut" selected>Donut</option>
+                                        <option value="pie">Pastel</option>
+                                        <option value="bar">Barras</option>
+                                    </select>
+                                    <span class="control-label-small">Red Social:</span>
+                                    <select class="chart-social-selector" onchange="updateChartData('activeUsers')">
+                                        <option value="all">Todas</option>
+                                        <option value="twitter">Twitter</option>
+                                        <option value="facebook">Facebook</option>
+                                        <option value="instagram">Instagram</option>
+                                        <option value="linkedin">LinkedIn</option>
+                                    </select>
+                                    <span class="control-label-small">Top:</span>
+                                    <select class="social-selector" onchange="updateChartLimit('activeUsers', this.value)">
+                                        <option value="5">5</option>
+                                        <option value="8" selected>8</option>
+                                        <option value="12">12</option>
+                                        <option value="15">15</option>
+                                    </select>
+                                </div>
+                                <div class="control-row">
+                                    <span class="control-label-small">Color:</span>
+                                    <input type="color" class="color-picker" value="#e74c3c" onchange="updateChartColor('activeUsers', this.value)">
+                                    <button class="widget-btn" onclick="updateChart('activeUsers')">Actualizar</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="activeUsersChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Performance Section -->
+                <div id="performance-section" class="analysis-section">
+                    <div class="section-header">
+                        <h2 class="section-title">🏆 Análisis de Performance</h2>
+                        <p class="section-description">Top posts y contenido con mejor rendimiento</p>
+                    </div>
+                    <div class="charts-row">
+                        <!-- Top Posts ya está en timeline, aquí podemos agregar más análisis -->
+                        <div class="chart-widget">
+                            <div class="widget-header">
+                                <h3 class="widget-title">📈 Métricas de Rendimiento</h3>
+                                <div class="widget-controls">
+                                    <div class="control-row">
+                                        <span class="control-label-small">Fecha desde:</span>
+                                        <input type="date" class="chart-date-selector" value="2025-08-01" onchange="updateChartData('performance')">
+                                        <span class="control-label-small">Fecha hasta:</span>
+                                        <input type="date" class="chart-date-selector" onchange="updateChartData('performance')">
+                                    </div>
+                                    <div class="control-row">
+                                        <span class="control-label-small">Tipo:</span>
+                                        <select class="chart-type-selector" onchange="updateChartType('performance', this.value)">
+                                            <option value="line" selected>Línea</option>
+                                            <option value="bar">Barras</option>
+                                            <option value="radar">Radar</option>
+                                        </select>
+                                        <span class="control-label-small">Red Social:</span>
+                                        <select class="chart-social-selector" onchange="updateChartData('performance')">
+                                            <option value="all">Todas</option>
+                                            <option value="twitter">Twitter</option>
+                                            <option value="facebook">Facebook</option>
+                                            <option value="instagram">Instagram</option>
+                                            <option value="linkedin">LinkedIn</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="performanceChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Engagement Section -->
+                <div id="engagement-section" class="analysis-section">
+                    <div class="section-header">
+                        <h2 class="section-title">💬 Análisis de Engagement</h2>
+                        <p class="section-description">Interacciones, sentimientos y participación</p>
+                    </div>
+                    <div class="charts-row">
+                        <div class="chart-widget">
+                            <div class="widget-header">
+                                <h3 class="widget-title">😊 Análisis de Sentimientos</h3>
+                                <div class="widget-controls">
+                                    <div class="control-row">
+                                        <span class="control-label-small">Fecha desde:</span>
+                                        <input type="date" class="chart-date-selector" value="2025-08-01" onchange="updateChartData('sentimentMain')">
+                                        <span class="control-label-small">Fecha hasta:</span>
+                                        <input type="date" class="chart-date-selector" onchange="updateChartData('sentimentMain')">
+                                    </div>
+                                    <div class="control-row">
+                                        <span class="control-label-small">Tipo:</span>
+                                        <select class="chart-type-selector" onchange="updateChartType('sentimentMain', this.value)">
+                                            <option value="doughnut" selected>Donut</option>
+                                            <option value="pie">Pastel</option>
+                                            <option value="bar">Barras</option>
+                                        </select>
+                                        <span class="control-label-small">Red Social:</span>
+                                        <select class="chart-social-selector" onchange="updateChartData('sentimentMain')">
+                                            <option value="all">Todas</option>
+                                            <option value="twitter">Twitter</option>
+                                            <option value="facebook">Facebook</option>
+                                            <option value="instagram">Instagram</option>
+                                            <option value="linkedin">LinkedIn</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="sentimentChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-widget">
+                            <div class="widget-header">
+                                <h3 class="widget-title"># Hashtags Trending</h3>
+                                <div class="widget-controls">
+                                    <div class="control-row">
+                                        <span class="control-label-small">Fecha desde:</span>
+                                        <input type="date" class="chart-date-selector" value="2025-08-01" onchange="updateChartData('hashtagsMain')">
+                                        <span class="control-label-small">Fecha hasta:</span>
+                                        <input type="date" class="chart-date-selector" onchange="updateChartData('hashtagsMain')">
+                                    </div>
+                                    <div class="control-row">
+                                        <span class="control-label-small">Tipo:</span>
+                                        <select class="chart-type-selector" onchange="updateChartType('hashtagsMain', this.value)">
+                                            <option value="bar" selected>Barras</option>
+                                            <option value="horizontalBar">Barras H.</option>
+                                            <option value="doughnut">Donut</option>
+                                        </select>
+                                        <span class="control-label-small">Red Social:</span>
+                                        <select class="chart-social-selector" onchange="updateChartData('hashtagsMain')">
+                                            <option value="all">Todas</option>
+                                            <option value="twitter">Twitter</option>
+                                            <option value="facebook">Facebook</option>
+                                            <option value="instagram">Instagram</option>
+                                            <option value="linkedin">LinkedIn</option>
+                                        </select>
+                                        <span class="control-label-small">Top:</span>
+                                        <select class="social-selector" onchange="updateChartLimit('hashtagsMain', this.value)">
+                                            <option value="10">10</option>
+                                            <option value="20" selected>20</option>
+                                            <option value="30">30</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="hashtagsChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Users Section -->
+                <div id="users-section" class="analysis-section">
+                    <div class="section-header">
+                        <h2 class="section-title">👥 Análisis de Usuarios</h2>
+                        <p class="section-description">Usuarios más activos y patrones de comportamiento</p>
+                    </div>
+                    <div class="charts-row">
+                        <!-- Active Users ya está en timeline, movamos acá -->
+                        <div class="chart-widget">
+                            <div class="widget-header">
+                                <h3 class="widget-title">🔥 Usuarios Más Activos</h3>
+                                <div class="widget-controls">
+                                    <div class="control-row">
+                                        <span class="control-label-small">Fecha desde:</span>
+                                        <input type="date" class="chart-date-selector" value="2025-08-01" onchange="updateChartData('topUsersMain')">
+                                        <span class="control-label-small">Fecha hasta:</span>
+                                        <input type="date" class="chart-date-selector" onchange="updateChartData('topUsersMain')">
+                                    </div>
+                                    <div class="control-row">
+                                        <span class="control-label-small">Tipo:</span>
+                                        <select class="chart-type-selector" onchange="updateChartType('topUsersMain', this.value)">
+                                            <option value="bar" selected>Barras</option>
+                                            <option value="horizontalBar">Barras H.</option>
+                                            <option value="doughnut">Donut</option>
+                                        </select>
+                                        <span class="control-label-small">Red Social:</span>
+                                        <select class="chart-social-selector" onchange="updateChartData('topUsersMain')">
+                                            <option value="all">Todas</option>
+                                            <option value="twitter">Twitter</option>
+                                            <option value="facebook">Facebook</option>
+                                            <option value="instagram">Instagram</option>
+                                            <option value="linkedin">LinkedIn</option>
+                                        </select>
+                                        <span class="control-label-small">Top:</span>
+                                        <select class="social-selector" onchange="updateChartLimit('topUsersMain', this.value)">
+                                            <option value="5">5</option>
+                                            <option value="10" selected>10</option>
+                                            <option value="15">15</option>
+                                            <option value="20">20</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="topUsersChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- WordCloud Section -->
+                <div id="wordcloud-section" class="analysis-section">
+                    <div class="section-header">
+                        <h2 class="section-title">☁️ Análisis de Palabras Clave</h2>
+                        <p class="section-description">Términos más mencionados y tendencias de vocabulario</p>
+                    </div>
+
+                    <div class="wordcloud-controls">
+                        <div class="wordcloud-options">
+                            <div class="filter-section">
+                                <span class="filter-label">Categorías de Contenido:</span>
+                                <div class="multi-select" id="wordcloudCategories">
+                                    <div class="checkbox-item checked">
+                                        <input type="checkbox" id="cat-words" checked>
+                                        <label for="cat-words">Palabras</label>
+                                    </div>
+                                    <div class="checkbox-item checked">
+                                        <input type="checkbox" id="cat-phrases" checked>
+                                        <label for="cat-phrases">Frases</label>
+                                    </div>
+                                    <div class="checkbox-item checked">
+                                        <input type="checkbox" id="cat-hashtags" checked>
+                                        <label for="cat-hashtags">Hashtags</label>
+                                    </div>
+                                    <div class="checkbox-item checked">
+                                        <input type="checkbox" id="cat-mentions" checked>
+                                        <label for="cat-mentions">Menciones</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="cat-longwords">
+                                        <label for="cat-longwords">Palabras Largas</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="filter-section">
+                                <span class="filter-label">Paleta de Colores:</span>
+                                <select id="colorPalette" onchange="generateWordCloud()">
+                                    <option value="professional">Professional (News Style)</option>
+                                    <option value="vibrant">Vibrant Colors</option>
+                                    <option value="corporate">Corporate Blue</option>
+                                    <option value="warm">Warm Tones</option>
+                                    <option value="political">Political Analysis</option>
+                                </select>
+                            </div>
+
+                            <button class="btn-primary" onclick="generateWordCloud()">
+                                <span>🔄 Generar Nube</span>
+                            </button>
+                        </div>
+
+                        <div class="wordcloud-stats">
+                            <div class="stat-box">
+                                <span class="stat-number" id="totalWordsCount">0</span>
+                                <span class="stat-description">Total Palabras</span>
+                            </div>
+                            <div class="stat-box">
+                                <span class="stat-number" id="placedWordsCount">0</span>
+                                <span class="stat-description">Mostradas</span>
+                            </div>
+                            <div class="stat-box">
+                                <span class="stat-number" id="exclusionsCount">0</span>
+                                <span class="stat-description">Excluidas</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="wordcloud-container">
+                        <canvas id="wordCloudCanvas" width="1200" height="600"></canvas>
+                    </div>
+
+                    <div id="exclusionsSection" class="filter-section">
+                        <span class="filter-label">Palabras Excluidas (click para restaurar):</span>
+                        <div id="excludedWordsList"></div>
+                    </div>
+                </div>
+
+                <!-- Network Section -->
+                <div id="network-section" class="analysis-section">
+                    <div class="section-header">
+                        <h2 class="section-title">🕸️ Análisis de Redes</h2>
+                        <p class="section-description">Conexiones entre usuarios, menciones y temas</p>
+                    </div>
+                    <div class="charts-row">
+                        <!-- Red de Menciones -->
+                        <div class="chart-widget">
+                            <div class="widget-header">
+                                <h3 class="widget-title">🔗 Red de Menciones</h3>
+                                <div class="widget-controls">
+                                    <div class="control-row">
+                                        <span class="control-label-small">Fecha desde:</span>
+                                        <input type="date" class="chart-date-selector" value="2025-08-01" onchange="updateChartData('mentions')">
+                                        <span class="control-label-small">Fecha hasta:</span>
+                                        <input type="date" class="chart-date-selector" onchange="updateChartData('mentions')">
+                                    </div>
+                                    <div class="control-row">
+                                        <span class="control-label-small">Tipo:</span>
+                                        <select class="chart-type-selector" onchange="updateChartType('mentions', this.value)">
+                                            <option value="horizontalBar">Más Mencionados</option>
+                                            <option value="bar">Que Más Mencionan</option>
+                                            <option value="doughnut">Distribución</option>
+                                        </select>
+                                        <span class="control-label-small">Red Social:</span>
+                                        <select class="chart-social-selector" onchange="updateChartData('mentions')">
+                                            <option value="all">Todas</option>
+                                            <option value="twitter">Twitter</option>
+                                            <option value="facebook">Facebook</option>
+                                            <option value="instagram">Instagram</option>
+                                            <option value="linkedin">LinkedIn</option>
+                                        </select>
+                                        <span class="control-label-small">Top:</span>
+                                        <select class="social-selector" onchange="updateChartLimit('mentions', this.value)">
+                                            <option value="5">5</option>
+                                            <option value="10" selected>10</option>
+                                            <option value="15">15</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="mentionsChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Análisis de Sentimiento -->
+                        <div class="chart-widget">
+                            <div class="widget-header">
+                                <h3 class="widget-title">😊 Análisis de Sentimiento</h3>
+                                <div class="widget-controls">
+                                    <div class="control-row">
+                                        <span class="control-label-small">Fecha desde:</span>
+                                        <input type="date" class="chart-date-selector" value="2025-08-01" onchange="updateChartData('sentiment')">
+                                        <span class="control-label-small">Fecha hasta:</span>
+                                        <input type="date" class="chart-date-selector" onchange="updateChartData('sentiment')">
+                                    </div>
+                                    <div class="control-row">
+                                        <span class="control-label-small">Tipo:</span>
+                                        <select class="chart-type-selector" onchange="updateChartType('sentiment', this.value)">
+                                            <option value="bar">Barras</option>
+                                            <option value="doughnut" selected>Donut</option>
+                                            <option value="polarArea">Área Polar</option>
+                                        </select>
+                                        <span class="control-label-small">Red Social:</span>
+                                        <select class="chart-social-selector" onchange="updateChartData('sentiment')">
+                                            <option value="all">Todas</option>
+                                            <option value="twitter">Twitter</option>
+                                            <option value="facebook">Facebook</option>
+                                            <option value="instagram">Instagram</option>
+                                            <option value="linkedin">LinkedIn</option>
+                                        </select>
+                                        <span class="control-label-small">Por:</span>
+                                        <select class="date-selector" onchange="updateSentimentAxis(this.value)">
+                                            <option value="source">Fuente</option>
+                                            <option value="time">Tiempo</option>
+                                            <option value="overall" selected>General</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="sentimentChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Análisis de Hashtags -->
+                        <div class="chart-widget">
+                            <div class="widget-header">
+                                <h3 class="widget-title"># Análisis de Hashtags</h3>
+                                <div class="widget-controls">
+                                    <div class="control-row">
+                                        <span class="control-label-small">Fecha desde:</span>
+                                        <input type="date" class="chart-date-selector" value="2025-08-01" onchange="updateChartData('hashtags')">
+                                        <span class="control-label-small">Fecha hasta:</span>
+                                        <input type="date" class="chart-date-selector" onchange="updateChartData('hashtags')">
+                                    </div>
+                                    <div class="control-row">
+                                        <span class="control-label-small">Tipo:</span>
+                                        <select class="chart-type-selector" onchange="updateChartType('hashtags', this.value)">
+                                            <option value="bar" selected>Barras</option>
+                                            <option value="horizontalBar">Barras H.</option>
+                                            <option value="doughnut">Donut</option>
+                                        </select>
+                                        <span class="control-label-small">Red Social:</span>
+                                        <select class="chart-social-selector" onchange="updateChartData('hashtags')">
+                                            <option value="all">Todas</option>
+                                            <option value="twitter">Twitter</option>
+                                            <option value="facebook">Facebook</option>
+                                            <option value="instagram">Instagram</option>
+                                            <option value="linkedin">LinkedIn</option>
+                                        </select>
+                                        <span class="control-label-small">Top:</span>
+                                        <select class="social-selector" onchange="updateChartLimit('hashtags', this.value)">
+                                            <option value="10">10</option>
+                                            <option value="20" selected>20</option>
+                                            <option value="30">30</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="hashtagsChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Engagement por Fuente -->
+                        <div class="chart-widget">
+                            <div class="widget-header">
+                                <h3 class="widget-title">📱 Engagement por Fuente</h3>
+                                <div class="widget-controls">
+                                    <div class="control-row">
+                                        <span class="control-label-small">Fecha desde:</span>
+                                        <input type="date" class="chart-date-selector" value="2025-08-01" onchange="updateChartData('engagementSource')">
+                                        <span class="control-label-small">Fecha hasta:</span>
+                                        <input type="date" class="chart-date-selector" onchange="updateChartData('engagementSource')">
+                                    </div>
+                                    <div class="control-row">
+                                        <span class="control-label-small">Tipo:</span>
+                                        <select class="chart-type-selector" onchange="updateChartType('engagementSource', this.value)">
+                                            <option value="bar">Barras</option>
+                                            <option value="radar" selected>Radar</option>
+                                            <option value="doughnut">Donut</option>
+                                        </select>
+                                        <span class="control-label-small">Red Social:</span>
+                                        <select class="chart-social-selector" onchange="updateChartData('engagementSource')">
+                                            <option value="all">Todas</option>
+                                            <option value="twitter">Twitter</option>
+                                            <option value="facebook">Facebook</option>
+                                            <option value="instagram">Instagram</option>
+                                            <option value="linkedin">LinkedIn</option>
+                                        </select>
+                                        <span class="control-label-small">Métrica:</span>
+                                        <select class="date-selector" onchange="updateEngagementMetric(this.value)">
+                                            <option value="likes" selected>Likes</option>
+                                            <option value="replies">Respuestas</option>
+                                            <option value="shared">Compartidos</option>
+                                            <option value="total">Total</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="engagementSourceChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Eficiencia de Usuarios -->
+                        <div class="chart-widget">
+                            <div class="widget-header">
+                                <h3 class="widget-title">⚡ Eficiencia de Usuarios</h3>
+                                <div class="widget-controls">
+                                    <div class="control-row">
+                                        <span class="control-label-small">Fecha desde:</span>
+                                        <input type="date" class="chart-date-selector" value="2025-08-01" onchange="updateChartData('userEfficiency')">
+                                        <span class="control-label-small">Fecha hasta:</span>
+                                        <input type="date" class="chart-date-selector" onchange="updateChartData('userEfficiency')">
+                                    </div>
+                                    <div class="control-row">
+                                        <span class="control-label-small">Tipo:</span>
+                                        <select class="chart-type-selector" onchange="updateChartType('userEfficiency', this.value)">
+                                            <option value="scatter" selected>Dispersión</option>
+                                            <option value="bubble">Burbujas</option>
+                                            <option value="bar">Barras</option>
+                                        </select>
+                                        <span class="control-label-small">Red Social:</span>
+                                        <select class="chart-social-selector" onchange="updateChartData('userEfficiency')">
+                                            <option value="all">Todas</option>
+                                            <option value="twitter">Twitter</option>
+                                            <option value="facebook">Facebook</option>
+                                            <option value="instagram">Instagram</option>
+                                            <option value="linkedin">LinkedIn</option>
+                                        </select>
+                                        <span class="control-label-small">Métrica Y:</span>
+                                        <select class="date-selector" onchange="updateEfficiencyMetric(this.value)">
+                                            <option value="avgLikes" selected>Likes Promedio</option>
+                                            <option value="avgReplies">Respuestas Promedio</option>
+                                            <option value="totalEngagement">Engagement Total</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="userEfficiencyChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modal para posts -->
+    <div id="postModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div id="modalBody">
+                <!-- Content will be populated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts cargados de forma optimizada -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js" defer></script>
+    <script src="dashboard-completo-optimizado.js" defer></script>
+
+    <script>
+        // Script crítico inline para inicialización rápida
+        document.addEventListener('DOMContentLoaded', function() {
+            // Ocultar loading cuando todo esté cargado
+            window.addEventListener('load', function() {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard').classList.add('loaded');
+
+                // Inicializar dashboard después de cargar
+                setTimeout(() => {
+                    if (typeof initDashboard === 'function') {
+                        initDashboard();
+                    }
+
+                    // Intentar cargar configuración BigQuery
+                    if (typeof loadBigQueryConfig === 'function') {
+                        loadBigQueryConfig();
+                    }
+                }, 100);
+            });
+        });
+    </script>
+</body>
+</html>

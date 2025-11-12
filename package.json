@@ -1,0 +1,38 @@
+{
+  "name": "dashboard-pro-integrado",
+  "version": "1.0.0",
+  "description": "Sistema integrado de dashboard con análisis de datos y generación de reportes",
+  "main": "dashboard-integrado.html",
+  "scripts": {
+    "start": "python -m http.server 8080",
+    "dev": "python -m http.server 8080",
+    "build": "echo 'Build script - copiar archivos a producción'",
+    "test": "echo 'Test script - validar funcionalidades'"
+  },
+  "keywords": [
+    "dashboard",
+    "analytics",
+    "wordcloud",
+    "reports",
+    "data-visualization"
+  ],
+  "author": "Manuel Adasme",
+  "license": "MIT",
+  "dependencies": {
+    "chart.js": "^3.9.1",
+    "papaparse": "^5.4.1"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "local"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}
