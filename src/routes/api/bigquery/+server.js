@@ -57,17 +57,17 @@ const EXCLUDED_DOMAINS = [
 ];
 
 // Patrones de caracteres para detectar idiomas asiáticos
-// Usamos rangos Unicode para identificar escrituras no latinas
+// BigQuery usa sintaxis \x{XXXX} para Unicode, no \uXXXX
 const ASIAN_LANGUAGE_PATTERNS = [
-	'[\\u4E00-\\u9FFF]',      // Chino (CJK Unified Ideographs)
-	'[\\u3040-\\u309F]',      // Japonés Hiragana
-	'[\\u30A0-\\u30FF]',      // Japonés Katakana
-	'[\\uAC00-\\uD7AF]',      // Coreano Hangul
-	'[\\u0E00-\\u0E7F]',      // Tailandés
-	'[\\u0600-\\u06FF]',      // Árabe
-	'[\\u0980-\\u09FF]',      // Bengali
-	'[\\u0A00-\\u0A7F]',      // Gurmukhi (Punjabi)
-	'[\\u0D00-\\u0D7F]'       // Malayalam
+	'[\\x{4E00}-\\x{9FFF}]',      // Chino (CJK Unified Ideographs)
+	'[\\x{3040}-\\x{309F}]',      // Japonés Hiragana
+	'[\\x{30A0}-\\x{30FF}]',      // Japonés Katakana
+	'[\\x{AC00}-\\x{D7AF}]',      // Coreano Hangul
+	'[\\x{0E00}-\\x{0E7F}]',      // Tailandés
+	'[\\x{0600}-\\x{06FF}]',      // Árabe
+	'[\\x{0980}-\\x{09FF}]',      // Bengali
+	'[\\x{0A00}-\\x{0A7F}]',      // Gurmukhi (Punjabi)
+	'[\\x{0D00}-\\x{0D7F}]'       // Malayalam
 ];
 
 // Rango máximo permitido en días (2 años = 730 días)
