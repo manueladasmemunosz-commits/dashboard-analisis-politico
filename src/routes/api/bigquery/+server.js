@@ -49,11 +49,16 @@ const EXCLUDED_DOMAINS = [
 	'%.pe',
 	'%.br/%',           // Dominios brasileños
 	'%.br',
-	'%.com.ar%',        // Dominios .com.ar
-	'%.com.mx%',        // Dominios .com.mx
-	'%.com.co%',        // Dominios .com.co
-	'%.com.pe%',        // Dominios .com.pe
-	'%.com.br%'         // Dominios .com.br
+	'%.com.ar/%',       // Dominios .com.ar con path
+	'%.com.ar',         // Dominios .com.ar sin path
+	'%.com.mx/%',       // Dominios .com.mx con path
+	'%.com.mx',         // Dominios .com.mx sin path
+	'%.com.co/%',       // Dominios .com.co con path
+	'%.com.co',         // Dominios .com.co sin path
+	'%.com.pe/%',       // Dominios .com.pe con path
+	'%.com.pe',         // Dominios .com.pe sin path
+	'%.com.br/%',       // Dominios .com.br con path
+	'%.com.br'          // Dominios .com.br sin path
 ];
 
 // Medios específicos a excluir (solicitados por usuario)
