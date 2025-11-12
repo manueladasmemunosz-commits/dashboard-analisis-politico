@@ -264,14 +264,42 @@ export async function POST({ request }) {
 		`;
 
 		// Agregar término de búsqueda si existe
-		// IMPORTANTE: Extraer palabras clave para búsqueda en BigQuery
+		// IMPORTANTE: Extraer frases exactas Y palabras clave por separado
+		// Las frases entre comillas se buscan como frases completas
 		// Los operadores lógicos (AND, OR, NOT) se aplican después en el cliente
 		if (searchTerm && searchTerm.trim()) {
-			// Extraer todas las palabras clave (sin operadores, paréntesis, comillas)
-			const keywords = searchTerm
+			const searchConditions = [];
+
+			// Paso 1: Extraer frases exactas entre comillas
+			const exactPhrases = [];
+			const phraseRegex = /"([^"]+)"/g;
+			let match;
+			let searchWithoutPhrases = searchTerm;
+
+			while ((match = phraseRegex.exec(searchTerm)) !== null) {
+				exactPhrases.push(match[1].trim());
+				// Remover la frase de la búsqueda para procesarla por separado
+				searchWithoutPhrases = searchWithoutPhrases.replace(match[0], ' ');
+			}
+
+			// Agregar condiciones para frases exactas
+			exactPhrases.forEach(phrase => {
+				if (phrase.length > 0) {
+					// Escapar caracteres especiales de regex
+					const escapedPhrase = phrase.toLowerCase()
+						.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+					// Buscar frase completa con word boundaries
+					const regexPattern = `\\b${escapedPhrase}\\b`;
+					searchConditions.push(`(REGEXP_CONTAINS(LOWER(text), r'${regexPattern}') OR REGEXP_CONTAINS(LOWER(user_name), r'${regexPattern}'))`);
+					console.log(`📝 Frase exacta detectada: "${phrase}"`);
+				}
+			});
+
+			// Paso 2: Extraer palabras individuales (sin frases entre comillas)
+			const keywords = searchWithoutPhrases
 				.toLowerCase()
 				.replace(/[()]/g, ' ') // Eliminar paréntesis
-				.replace(/"([^"]+)"/g, '$1') // Eliminar comillas pero mantener el texto
 				.split(/\s+/) // Dividir por espacios
 				.filter(word =>
 					word.length > 2 && // Palabras de más de 2 caracteres
@@ -279,32 +307,30 @@ export async function POST({ request }) {
 				)
 				.map(word => word.replace(/\*/g, '%')); // Convertir * a % para SQL LIKE
 
-			if (keywords.length > 0) {
-				// Buscar cualquiera de las palabras clave en BigQuery (OR)
-				const searchConditions = keywords.map(keyword => {
-					// Detectar si tiene wildcards (%) - si los tiene, usar LIKE, sino usar REGEXP con word boundaries
-					const hasWildcard = keyword.includes('%');
+			// Agregar condiciones para palabras individuales
+			keywords.forEach(keyword => {
+				// Detectar si tiene wildcards (%) - si los tiene, usar LIKE, sino usar REGEXP con word boundaries
+				const hasWildcard = keyword.includes('%');
 
-					if (hasWildcard) {
-						// Si tiene wildcards, usar LIKE para búsqueda parcial
-						const safeKeyword = escapeSqlString(keyword);
-						return `(LOWER(text) LIKE '%${safeKeyword}%' OR LOWER(user_name) LIKE '%${safeKeyword}%')`;
-					} else {
-						// Sin wildcards: buscar palabra completa usando REGEXP con word boundaries
-						// Escapar caracteres especiales de regex
-						const escapedKeyword = keyword
-							.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // Escapar caracteres especiales de regex
+				if (hasWildcard) {
+					// Si tiene wildcards, usar LIKE para búsqueda parcial
+					const safeKeyword = escapeSqlString(keyword);
+					searchConditions.push(`(LOWER(text) LIKE '%${safeKeyword}%' OR LOWER(user_name) LIKE '%${safeKeyword}%')`);
+				} else {
+					// Sin wildcards: buscar palabra completa usando REGEXP con word boundaries
+					// Escapar caracteres especiales de regex
+					const escapedKeyword = keyword
+						.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-						// \b = word boundary (límite de palabra)
-						// Esto asegura que "fes" NO coincida con "profesores"
-						// IMPORTANTE: Solo 2 backslashes en JS → 1 backslash en el string → BigQuery interpreta como word boundary
-						const regexPattern = `\\b${escapedKeyword}\\b`;
-						return `(REGEXP_CONTAINS(LOWER(text), r'${regexPattern}') OR REGEXP_CONTAINS(LOWER(user_name), r'${regexPattern}'))`;
-					}
-				});
+					// \b = word boundary (límite de palabra)
+					const regexPattern = `\\b${escapedKeyword}\\b`;
+					searchConditions.push(`(REGEXP_CONTAINS(LOWER(text), r'${regexPattern}') OR REGEXP_CONTAINS(LOWER(user_name), r'${regexPattern}'))`);
+				}
+			});
 
+			if (searchConditions.length > 0) {
 				baseQuery += ` AND (${searchConditions.join(' OR ')})`;
-				console.log(`🔍 Búsqueda BigQuery con ${keywords.length} palabras clave:`, keywords);
+				console.log(`🔍 Búsqueda BigQuery - Frases exactas: ${exactPhrases.length}, Palabras: ${keywords.length}`);
 			}
 		}
 
