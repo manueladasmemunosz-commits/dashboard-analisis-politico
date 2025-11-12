@@ -16,6 +16,8 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ProyectosView from '$lib/components/ProyectosView.svelte';
 	import ProjectComparisonView from '$lib/components/ProjectComparisonView.svelte';
+	import MediaListView from '$lib/components/MediaListView.svelte';
+	import UserTimelineView from '$lib/components/UserTimelineView.svelte';
 	import Papa from 'papaparse';
 
 	let totalPosts = 0;
@@ -337,8 +339,14 @@
 				loadingStep = 3;
 				loadingStepText = 'Procesando datos y generando gráficos...';
 
+				// Pequeño delay para que la UI se actualice
+				await new Promise(resolve => setTimeout(resolve, 100));
+
 				// Cargar datos en el store
 				loadCsvData(result.data);
+
+				// Otro delay para que el store se actualice antes de quitar el loading
+				await new Promise(resolve => setTimeout(resolve, 200));
 
 				// IMPORTANTE: NO volver a filtrar por searchTerm en el cliente
 				// BigQuery ya hizo el filtro (aunque sea aproximado), aplicarlo de nuevo eliminaría posts
@@ -348,6 +356,8 @@
 					dateFrom,
 					dateTo
 				});
+
+				console.log('✅ Datos cargados y filtros aplicados');
 
 				alert(`✅ ${result.count} registros cargados desde BigQuery\n` +
 				      `📅 Rango: ${result.metadata.rangeDays} días\n` +
@@ -865,6 +875,18 @@
 			{/if}
 		</div>
 	</div>
+	{/if}
+
+	<!-- Lista de publicaciones por medio (solo en pestaña Principal) -->
+	{#if activeTab === 'main' && $filteredData && $filteredData.length > 0}
+		<MediaListView posts={$filteredData} />
+	{/if}
+
+	<!-- PESTAÑA USUARIOS -->
+	{#if activeTab === 'usuarios'}
+		<div id="users-timeline-section" class="analysis-section">
+			<UserTimelineView posts={$rawData} />
+		</div>
 	{/if}
 
 	<!-- Loading overlay mejorado con pasos -->

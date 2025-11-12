@@ -42,7 +42,8 @@
 		const sectionMap = {
 			'main': 'main-section',
 			'proyectos': 'proyectos-section',
-			'comparacion': 'project-comparison-section'
+			'comparacion': 'project-comparison-section',
+			'usuarios': 'users-timeline-section'
 		};
 
 		const sectionId = sectionMap[tab];
@@ -168,6 +169,13 @@
 			>
 				<span class="tab-icon">🔄</span>
 				Comparación
+			</button>
+			<button
+				class="nav-tab {activeTab === 'usuarios' ? 'active' : ''}"
+				on:click={() => handleTabClick('usuarios')}
+			>
+				<span class="tab-icon">👥</span>
+				Usuarios
 			</button>
 		</nav>
 	</div>
