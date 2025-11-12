@@ -56,6 +56,20 @@ const EXCLUDED_DOMAINS = [
 	'%.com.br%'         // Dominios .com.br
 ];
 
+// Medios específicos a excluir (solicitados por usuario)
+const EXCLUDED_SPECIFIC_MEDIA = [
+	'%cadenaser.com%',           // Cadena SER (España)
+	'%vandal.%',                 // Vandal (videojuegos)
+	'%diariovasco.com%',         // Diario Vasco (España)
+	'%infobae.com%',             // Infobae (Argentina/Internacional)
+	'%mdzol.com%',               // MDZ Online (Argentina)
+	'%hobbyconsolas.com%',       // Hobby Consolas (España, videojuegos)
+	'%realovirtual.com%',        // Real o Virtual
+	'%elespanol.com%',           // El Español (España)
+	'%elqueretano.com%',         // El Queretano (México)
+	'%escenariomundial.com%'     // Escenario Mundial
+];
+
 // Patrones de caracteres para detectar idiomas asiáticos
 // BigQuery usa sintaxis \x{XXXX} para Unicode, no \uXXXX
 const ASIAN_LANGUAGE_PATTERNS = [
@@ -292,10 +306,18 @@ export async function POST({ request }) {
 		console.log(`   Chile: ${dateFrom} 00:00 → UTC: ${dateFromUTC}`);
 		console.log(`   Chile: ${dateTo} 23:59 → UTC: ${dateToUTC}`);
 
-		// Construir condiciones de exclusión de dominios extranjeros
+		// Construir condiciones de exclusión de dominios extranjeros por país
 		const domainExclusions = EXCLUDED_DOMAINS.map(domain =>
 			`LOWER(link) NOT LIKE '${domain}'`
 		).join(' AND ');
+
+		// Construir condiciones de exclusión de medios específicos
+		const specificMediaExclusions = EXCLUDED_SPECIFIC_MEDIA.map(media =>
+			`LOWER(link) NOT LIKE '${media}'`
+		).join(' AND ');
+
+		// Combinar ambas exclusiones
+		const allDomainExclusions = `(${domainExclusions}) AND (${specificMediaExclusions})`;
 
 		// Construir pattern para detectar idiomas asiáticos
 		// Combinamos todos los patrones en uno solo con OR (|)
@@ -306,11 +328,12 @@ export async function POST({ request }) {
 			WHERE created >= '${dateFromUTC}'
 			  AND created <= '${dateToUTC}'
 			  AND name_proyecto != '${EXCLUDED_PROJECT}'
-			  AND (link IS NULL OR link = '' OR (${domainExclusions}))
+			  AND (link IS NULL OR link = '' OR ${allDomainExclusions})
 			  AND NOT REGEXP_CONTAINS(text, r'${asianLanguagePattern}')
 		`;
 
-		console.log('🚫 Excluyendo dominios extranjeros:', EXCLUDED_DOMAINS.length, 'patrones');
+		console.log('🚫 Excluyendo dominios por país:', EXCLUDED_DOMAINS.length, 'patrones');
+		console.log('🚫 Excluyendo medios específicos:', EXCLUDED_SPECIFIC_MEDIA.length, 'medios');
 		console.log('🚫 Excluyendo idiomas asiáticos/no-latinos:', ASIAN_LANGUAGE_PATTERNS.length, 'patrones Unicode');
 
 		// Agregar término de búsqueda si existe
