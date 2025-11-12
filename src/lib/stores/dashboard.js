@@ -145,16 +145,20 @@ function evaluateTokens(text, tokens) {
 
 				// Evaluar el grupo recursivamente
 				const groupResult = evaluateTokens(textLower, groupTokens);
-				const finalGroupResult = notNext ? !groupResult : groupResult;
-				notNext = false;
+
+				// IMPORTANTE: NO aplicar notNext aquí, el NOT después de ) debe ir al siguiente término
+				// Ejemplo: (A OR B) NOT C → evalúa (A OR B) primero, luego AND NOT C
 
 				if (result === null) {
-					result = finalGroupResult;
+					result = groupResult;
 				} else if (currentOperator === 'OR') {
-					result = result || finalGroupResult;
+					result = result || groupResult;
 				} else {
-					result = result && finalGroupResult;
+					result = result && groupResult;
 				}
+
+				// Reset operator después de grupo (por defecto AND)
+				currentOperator = 'AND';
 			}
 		} else if (token.type === 'operator') {
 			currentOperator = token.value;
