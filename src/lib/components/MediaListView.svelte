@@ -421,6 +421,7 @@
 		align-items: center;
 		padding-right: 10px;
 		flex-shrink: 0;
+		user-select: none; /* No seleccionar los botones */
 	}
 
 	.link-btn {
@@ -435,6 +436,7 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
+		user-select: none;
 	}
 
 	.link-btn:hover {
@@ -451,6 +453,7 @@
 		font-size: 16px;
 		transition: all 0.2s;
 		flex-shrink: 0;
+		user-select: none;
 	}
 
 	.details-btn:hover {
@@ -462,20 +465,23 @@
 		display: flex;
 		gap: 8px;
 		line-height: 1.5;
+		font-family: 'Arial Narrow', Arial, sans-serif;
+		font-size: 13px;
 	}
 
 	.media-domain {
 		font-weight: 700;
-		color: #3498db;
+		color: #000000;
 		white-space: nowrap;
 		flex-shrink: 0;
-		font-size: 14px;
+		font-size: 13px;
 	}
 
 	.media-title {
-		color: #2c3e50;
+		color: #000000;
 		flex: 1;
-		font-size: 14px;
+		font-size: 13px;
+		font-style: italic;
 	}
 
 	.empty-state {
