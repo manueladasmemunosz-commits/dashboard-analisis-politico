@@ -83,10 +83,10 @@
 			const dateFromStr = dateFrom.toISOString().split('T')[0];
 			const dateToStr = now.toISOString().split('T')[0];
 
-			// Construir query con OR conditions para cada usuario
-			// Formato: (user1 OR user2 OR user3)
-			const userQueries = watchedUsers.map(user => `"${user}"`).join(' OR ');
-			const searchTerm = `(${userQueries})`;
+			// Construir query con frases exactas para cada usuario
+			// El endpoint de BigQuery une automáticamente con OR
+			// Formato: "user1" "user2" "user3"
+			const searchTerm = watchedUsers.map(user => `"${user}"`).join(' ');
 
 			console.log('🔍 Consultando nuevas publicaciones:', {
 				dateFrom: dateFromStr,
