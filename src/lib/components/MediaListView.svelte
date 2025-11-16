@@ -269,25 +269,30 @@
 		{:else}
 			{#each displayedPosts as post, index (`${post.link || ''}-${post.created || ''}-${index}`)}
 				<div class="media-item-wrapper">
-					<a
-						href={post.link}
-						target="_blank"
-						rel="noopener noreferrer"
-						class="media-item"
-						title={formatDate(post.created)}
-					>
+					<div class="media-item" title={formatDate(post.created)}>
 						<div class="media-content">
 							<span class="media-domain">{post.displayName}:</span>
 							<span class="media-title">{post.cleanedTitle}</span>
 						</div>
-					</a>
-					<button
-						class="details-btn"
-						on:click|stopPropagation={() => showPostDetails(post)}
-						title="Ver detalles del post"
-					>
-						ℹ️
-					</button>
+					</div>
+					<div class="item-actions">
+						<a
+							href={post.link}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="link-btn"
+							title="Abrir enlace"
+						>
+							🔗
+						</a>
+						<button
+							class="details-btn"
+							on:click|stopPropagation={() => showPostDetails(post)}
+							title="Ver detalles del post"
+						>
+							ℹ️
+						</button>
+					</div>
 				</div>
 			{/each}
 		{/if}
@@ -405,19 +410,40 @@
 	.media-item {
 		flex: 1;
 		padding: 15px;
-		text-decoration: none;
-		color: inherit;
 		display: block;
-		transition: background-color 0.2s;
+		user-select: text; /* Permitir selección de texto */
+		cursor: text;
 	}
 
-	.media-item:hover {
-		background-color: #f8f9fa;
+	.item-actions {
+		display: flex;
+		gap: 8px;
+		align-items: center;
+		padding-right: 10px;
+		flex-shrink: 0;
+	}
+
+	.link-btn {
+		padding: 8px 12px;
+		background: #27ae60;
+		border: none;
+		border-radius: 5px;
+		cursor: pointer;
+		font-size: 16px;
+		transition: all 0.2s;
+		text-decoration: none;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.link-btn:hover {
+		background: #229954;
+		transform: scale(1.1);
 	}
 
 	.details-btn {
 		padding: 8px 12px;
-		margin-right: 10px;
 		background: #ecf0f1;
 		border: none;
 		border-radius: 5px;
