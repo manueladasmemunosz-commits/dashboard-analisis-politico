@@ -915,15 +915,6 @@
 			</div>
 		</div>
 	{/if}
-
-	<!-- Status del dashboard -->
-	<div class="dashboard-status">
-		<p>
-			📊 Posts: <strong>{totalPosts}</strong>
-			| 🔍 Filtrados: <strong>{filteredPosts}</strong>
-			| 💬 Engagement: <strong>{totalEngagement.toLocaleString()}</strong>
-		</p>
-	</div>
 </div>
 
 <style>
@@ -1056,19 +1047,6 @@
 		color: #666;
 		font-size: 0.95rem;
 		min-height: 24px;
-	}
-
-	.dashboard-status {
-		position: fixed;
-		bottom: 20px;
-		right: 20px;
-		background: var(--chile-blue-600);
-		color: white;
-		padding: 0.5rem 1rem;
-		border-radius: var(--border-radius);
-		font-size: 0.8rem;
-		box-shadow: var(--shadow-lg);
-		z-index: 1000;
 	}
 
 	.featured-section {
