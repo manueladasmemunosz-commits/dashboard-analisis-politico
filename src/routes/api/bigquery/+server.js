@@ -75,9 +75,10 @@ const EXCLUDED_SPECIFIC_MEDIA = [
 	'%escenariomundial.com%'     // Escenario Mundial
 ];
 
-// Patrones de caracteres para detectar idiomas asiáticos
+// Patrones de caracteres para detectar idiomas no españoles
 // BigQuery usa sintaxis \x{XXXX} para Unicode, no \uXXXX
-const ASIAN_LANGUAGE_PATTERNS = [
+const NON_SPANISH_LANGUAGE_PATTERNS = [
+	// Idiomas asiáticos
 	'[\\x{4E00}-\\x{9FFF}]',      // Chino (CJK Unified Ideographs)
 	'[\\x{3040}-\\x{309F}]',      // Japonés Hiragana
 	'[\\x{30A0}-\\x{30FF}]',      // Japonés Katakana
@@ -86,7 +87,124 @@ const ASIAN_LANGUAGE_PATTERNS = [
 	'[\\x{0600}-\\x{06FF}]',      // Árabe
 	'[\\x{0980}-\\x{09FF}]',      // Bengali
 	'[\\x{0A00}-\\x{0A7F}]',      // Gurmukhi (Punjabi)
-	'[\\x{0D00}-\\x{0D7F}]'       // Malayalam
+	'[\\x{0D00}-\\x{0D7F}]',      // Malayalam
+
+	// Caracteres específicos de idiomas eslavos (polaco, checo, etc.)
+	'[łŁ]',                       // Polaco: ł
+	'[śŚćĆńŃźŹżŻ]',               // Polaco: ś, ć, ń, ź, ż
+	'[ąĄęĘ]',                     // Polaco: ą, ę
+	'[řŘ]',                       // Checo: ř
+	'[ůŮ]',                       // Checo: ů
+	'[ěĚ]',                       // Checo: ě
+
+	// Caracteres específicos de otros idiomas europeos
+	'[őŐűŰ]',                     // Húngaro: ő, ű
+	'[șȘțȚ]',                     // Rumano: ș, ț
+	'[đĐ]',                       // Croata/serbio: đ
+	'[æÆøØåÅ]',                   // Nórdicos: æ, ø, å
+	'[œŒ]',                       // Francés: œ
+	'[ßẞ]'                        // Alemán: ß
+];
+
+// Palabras muy comunes en inglés que raramente aparecen en español
+// Usamos word boundaries (\b) para evitar falsos positivos
+const ENGLISH_COMMON_WORDS = [
+	// Artículos y pronombres (muy específicos del inglés)
+	'\\bthe\\b',
+	'\\btheir\\b',
+	'\\bthey\\b',
+	'\\bthem\\b',
+	'\\bthose\\b',
+	'\\bthese\\b',
+	'\\bthis\\b',
+	'\\bthat\\b',
+
+	// Preposiciones únicas del inglés
+	'\\bthrough\\b',
+	'\\bwithin\\b',
+	'\\bwithout\\b',
+	'\\btowards\\b',
+	'\\bamong\\b',
+	'\\bbetween\\b',
+	'\\binto\\b',
+	'\\bonto\\b',
+	'\\bfrom\\b',
+
+	// Conjunciones
+	'\\balthough\\b',
+	'\\bwhether\\b',
+	'\\bwhile\\b',
+	'\\bwhereas\\b',
+
+	// Verbos auxiliares y modales
+	'\\bwould\\b',
+	'\\bshould\\b',
+	'\\bcould\\b',
+	'\\bmight\\b',
+	'\\bmust\\b',
+	'\\bshall\\b',
+
+	// Construcciones verbales comunes
+	'\\bhave been\\b',
+	'\\bhas been\\b',
+	'\\bhad been\\b',
+	'\\bwill be\\b',
+	'\\bwould be\\b',
+	'\\bshould be\\b',
+	'\\bcould be\\b',
+	'\\bis being\\b',
+	'\\bare being\\b',
+	'\\bwas being\\b',
+	'\\bwere being\\b',
+
+	// Patrones "there + verbo"
+	'\\bthere (is|are|was|were|will|would|has|have|be)\\b',
+
+	// Adverbios comunes en inglés
+	'\\balready\\b',
+	'\\balways\\b',
+	'\\boften\\b',
+	'\\bsometimes\\b',
+	'\\bnever\\b',
+	'\\bseldom\\b',
+	'\\busually\\b',
+	'\\bfrequently\\b',
+
+	// Palabras de comparación
+	'\\bthan\\b',
+	'\\bthen\\b',
+
+	// Palabras interrogativas
+	'\\bwhat\\b',
+	'\\bwhen\\b',
+	'\\bwhere\\b',
+	'\\bwhich\\b',
+	'\\bwhose\\b',
+
+	// Verbos muy comunes en inglés con terminaciones típicas
+	'\\b\\w+ing\\b.*\\b\\w+ing\\b',  // Dos palabras terminadas en -ing (muy común en inglés)
+	'\\b(walking|running|reading|writing|smoking|drinking|sleeping|eating|working|playing|staying|going|coming|doing|making|taking|getting|giving|looking|thinking|feeling|being)\\b',
+
+	// Sustantivos y adjetivos muy comunes (excluyendo tea, winter, summer, spring, fall por falsos positivos)
+	'\\b(coffee|dogs|cats|home|people|things|something|anything|nothing|everything|someone|anyone|everyone|nobody)\\b',
+
+	// Comparativos y superlativos típicos del inglés
+	'\\b\\w+er than\\b',
+	'\\b\\w+est\\b',
+	'\\bmore \\w+ than\\b',
+	'\\bless \\w+ than\\b',
+
+	// Frases muy comunes
+	'\\ba lot of\\b',
+	'\\bkind of\\b',
+	'\\bsort of\\b',
+	'\\bin order to\\b',
+	'\\bas well as\\b',
+	'\\bin spite of\\b',
+	'\\bbecause of\\b',
+	'\\binstead of\\b',
+	'\\bat least\\b',
+	'\\bat most\\b'
 ];
 
 // Rango máximo permitido en días (2 años = 730 días)
@@ -324,9 +442,12 @@ export async function POST({ request }) {
 		// Combinar ambas exclusiones
 		const allDomainExclusions = `(${domainExclusions}) AND (${specificMediaExclusions})`;
 
-		// Construir pattern para detectar idiomas asiáticos
+		// Construir pattern para detectar idiomas no españoles
 		// Combinamos todos los patrones en uno solo con OR (|)
-		const asianLanguagePattern = ASIAN_LANGUAGE_PATTERNS.join('|');
+		const nonSpanishLanguagePattern = NON_SPANISH_LANGUAGE_PATTERNS.join('|');
+
+		// Construir pattern para detectar inglés (case insensitive)
+		const englishPattern = ENGLISH_COMMON_WORDS.join('|');
 
 		let baseQuery = `
 			SELECT * FROM \`${AUTHORIZED_TABLE}\`
@@ -334,12 +455,14 @@ export async function POST({ request }) {
 			  AND created <= '${dateToUTC}'
 			  AND name_proyecto != '${EXCLUDED_PROJECT}'
 			  AND (link IS NULL OR link = '' OR ${allDomainExclusions})
-			  AND NOT REGEXP_CONTAINS(text, r'${asianLanguagePattern}')
+			  AND NOT REGEXP_CONTAINS(text, r'${nonSpanishLanguagePattern}')
+			  AND NOT REGEXP_CONTAINS(LOWER(text), r'${englishPattern}')
 		`;
 
 		console.log('🚫 Excluyendo dominios por país:', EXCLUDED_DOMAINS.length, 'patrones');
 		console.log('🚫 Excluyendo medios específicos:', EXCLUDED_SPECIFIC_MEDIA.length, 'medios');
-		console.log('🚫 Excluyendo idiomas asiáticos/no-latinos:', ASIAN_LANGUAGE_PATTERNS.length, 'patrones Unicode');
+		console.log('🚫 Excluyendo idiomas no españoles:', NON_SPANISH_LANGUAGE_PATTERNS.length, 'patrones Unicode (asiáticos, eslavos, europeos)');
+		console.log('🚫 Excluyendo inglés:', ENGLISH_COMMON_WORDS.length, 'palabras/patrones comunes');
 
 		// Agregar término de búsqueda si existe
 		// IMPORTANTE: Extraer frases exactas Y palabras clave por separado

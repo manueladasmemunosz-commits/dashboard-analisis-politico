@@ -23,6 +23,12 @@
 	export let showVisualizationModeControls = false; // Para engagement scatter
 	export let chartTypes = ['line', 'bar', 'area'];
 
+	// Comparación de proyectos
+	export let showProjectComparison = false;
+	export let projectComparisonEnabled = false;
+	export let selectedProjectIds = [];
+	export let availableProjects = [];
+
 	// Sincronizar fechas locales con el store global de filtros
 	// Esto asegura que los inputs de fecha de cada gráfico reflejen las fechas globales
 	// IMPORTANTE: Solo actualizar si los valores realmente cambiaron (prevenir loop)
@@ -155,6 +161,28 @@
 
 	function handleComparativeDatesChange() {
 		dispatch('comparativeDatesChange', { dateFromB, dateToB });
+	}
+
+	function handleProjectComparisonToggle() {
+		dispatch('projectComparisonToggle', { projectComparisonEnabled });
+	}
+
+	function handleProjectSelection(projectId) {
+		if (selectedProjectIds.includes(projectId)) {
+			// Deseleccionar proyecto
+			selectedProjectIds = selectedProjectIds.filter(id => id !== projectId);
+		} else {
+			// Seleccionar proyecto (máximo 4 proyectos)
+			if (selectedProjectIds.length < 4) {
+				selectedProjectIds = [...selectedProjectIds, projectId];
+			}
+		}
+		// NO disparar evento aquí - esperar a que el usuario haga clic en "Comparar"
+	}
+
+	function handleCompareProjects() {
+		console.log('🔍 Iniciando comparación de proyectos:', selectedProjectIds);
+		dispatch('projectSelectionChange', { selectedProjectIds });
 	}
 
 	async function handleRefresh() {
@@ -335,6 +363,53 @@
 			</select>
 		</div>
 	</div>
+
+	<!-- Comparación de Proyectos -->
+	{#if showProjectComparison && availableProjects.length > 0}
+		<div class="control-group project-comparison-group">
+			<div class="comparison-header">
+				<label class="comparison-toggle">
+					<input
+						type="checkbox"
+						bind:checked={projectComparisonEnabled}
+						on:change={handleProjectComparisonToggle}
+					>
+					<span class="comparison-label">
+						📊 Comparar Proyectos
+					</span>
+				</label>
+			</div>
+
+			{#if projectComparisonEnabled}
+				<div class="project-selector">
+					<span class="control-label-small">Selecciona hasta 4 proyectos:</span>
+					<div class="project-checkboxes">
+						{#each availableProjects as proyecto}
+							<label class="project-checkbox-label">
+								<input
+									type="checkbox"
+									checked={selectedProjectIds.includes(proyecto.id)}
+									on:change={() => handleProjectSelection(proyecto.id)}
+									disabled={!selectedProjectIds.includes(proyecto.id) && selectedProjectIds.length >= 4}
+								>
+								<span class="project-name" style="border-left: 3px solid {proyecto.color}">
+									{proyecto.nombre}
+								</span>
+							</label>
+						{/each}
+					</div>
+					{#if selectedProjectIds.length > 0}
+						<div class="selected-projects-info">
+							✓ {selectedProjectIds.length} proyecto{selectedProjectIds.length > 1 ? 's' : ''} seleccionado{selectedProjectIds.length > 1 ? 's' : ''}
+						</div>
+						<button class="compare-projects-btn" on:click={handleCompareProjects}>
+							🔍 Comparar Proyectos
+						</button>
+					{/if}
+				</div>
+			{/if}
+		</div>
+	{/if}
 
 	{#if showChartTypeControls}
 		<div class="control-group">
@@ -644,5 +719,127 @@
 	.proyecto-dates {
 		color: #7f8c8d !important;
 		font-size: 0.8rem;
+	}
+
+	/* Comparación de Proyectos */
+	.project-comparison-group {
+		background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+		border: 2px solid #0ea5e9;
+		border-radius: 8px;
+		padding: 1rem;
+	}
+
+	.comparison-header {
+		margin-bottom: 0.5rem;
+	}
+
+	.comparison-toggle {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		cursor: pointer;
+		font-weight: 600;
+		color: #0c4a6e;
+	}
+
+	.comparison-toggle input[type="checkbox"] {
+		width: 18px;
+		height: 18px;
+		cursor: pointer;
+	}
+
+	.comparison-label {
+		font-size: 0.95rem;
+	}
+
+	.project-selector {
+		margin-top: 1rem;
+		padding-top: 1rem;
+		border-top: 1px solid #bae6fd;
+	}
+
+	.control-label-small {
+		display: block;
+		font-size: 0.85rem;
+		color: #475569;
+		margin-bottom: 0.5rem;
+		font-weight: 500;
+	}
+
+	.project-checkboxes {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.project-checkbox-label {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.5rem;
+		background: white;
+		border-radius: 6px;
+		cursor: pointer;
+		transition: all 0.2s;
+	}
+
+	.project-checkbox-label:hover {
+		background: #f1f5f9;
+		transform: translateX(2px);
+	}
+
+	.project-checkbox-label input[type="checkbox"] {
+		width: 16px;
+		height: 16px;
+		cursor: pointer;
+	}
+
+	.project-checkbox-label input[type="checkbox"]:disabled {
+		cursor: not-allowed;
+		opacity: 0.5;
+	}
+
+	.project-name {
+		flex: 1;
+		font-size: 0.9rem;
+		color: #1e293b;
+		padding-left: 0.5rem;
+	}
+
+	.selected-projects-info {
+		margin-top: 0.75rem;
+		padding: 0.5rem;
+		background: #ecfdf5;
+		border-left: 3px solid #10b981;
+		border-radius: 4px;
+		font-size: 0.85rem;
+		color: #065f46;
+		font-weight: 500;
+	}
+
+	.compare-projects-btn {
+		margin-top: 0.75rem;
+		width: 100%;
+		padding: 0.75rem 1rem;
+		background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+		color: white;
+		border: none;
+		border-radius: 6px;
+		font-size: 0.95rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		box-shadow: 0 2px 4px rgba(14, 165, 233, 0.2);
+	}
+
+	.compare-projects-btn:hover {
+		background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+		box-shadow: 0 4px 8px rgba(14, 165, 233, 0.3);
+		transform: translateY(-1px);
+	}
+
+	.compare-projects-btn:active {
+		transform: translateY(0);
+		box-shadow: 0 2px 4px rgba(14, 165, 233, 0.2);
 	}
 </style>

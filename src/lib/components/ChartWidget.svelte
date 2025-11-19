@@ -24,6 +24,12 @@
 	export let dateFromB = '2025-01-01';
 	export let dateToB = '2025-12-12';
 
+	// Comparación de proyectos
+	export let showProjectComparison = false; // Mostrar controles de comparación de proyectos
+	export let projectComparisonEnabled = false; // Estado activo/inactivo
+	export let selectedProjectIds = []; // IDs de proyectos seleccionados
+	export let availableProjects = []; // Lista de proyectos disponibles
+
 	import { createEventDispatcher } from 'svelte';
 	import ChartControls from './ChartControls.svelte';
 	import { filters, updateChartConfig, updateFilters } from '$lib/stores/dashboard.js';
@@ -113,6 +119,28 @@
 		const { visualizationMode: newVisualizationMode } = event.detail;
 		visualizationMode = newVisualizationMode;
 		updateChartConfig(chartName, { visualizationMode });
+	}
+
+	function handleProjectComparisonToggle(event) {
+		projectComparisonEnabled = event.detail.projectComparisonEnabled;
+		updateChartConfig(chartName, { projectComparisonEnabled });
+
+		// Disparar evento para que el padre sepa que cambió el modo
+		dispatch('projectComparisonToggle', {
+			enabled: projectComparisonEnabled,
+			chartName
+		});
+	}
+
+	function handleProjectSelectionChange(event) {
+		selectedProjectIds = event.detail.selectedProjectIds;
+		updateChartConfig(chartName, { selectedProjectIds });
+
+		// Disparar evento para que el padre cargue los datos de los proyectos
+		dispatch('projectSelectionChanged', {
+			projectIds: selectedProjectIds,
+			chartName
+		});
 	}
 
 	function handleProyectoApplied(event) {
@@ -295,6 +323,10 @@
 				{showColorPaletteControls}
 				{showVisualizationModeControls}
 				{chartTypes}
+				{showProjectComparison}
+				bind:projectComparisonEnabled
+				bind:selectedProjectIds
+				{availableProjects}
 				on:dateChange={handleDateChange}
 				on:typeChange={handleTypeChange}
 				on:socialChange={handleSocialChange}
@@ -305,6 +337,8 @@
 				on:visualizationModeChange={handleVisualizationModeChange}
 				on:comparativeToggle={handleComparativeToggle}
 				on:comparativeDatesChange={handleComparativeDatesChange}
+				on:projectComparisonToggle={handleProjectComparisonToggle}
+				on:projectSelectionChange={handleProjectSelectionChange}
 				on:proyectoApplied={handleProyectoApplied}
 				on:refresh={handleRefresh}
 			/>

@@ -249,9 +249,6 @@
 
 					<div class="proyecto-meta">
 						<span class="meta-item">
-							📅 {proyecto.query.dateFrom} → {proyecto.query.dateTo}
-						</span>
-						<span class="meta-item">
 							👤 {proyecto.creador}
 						</span>
 					</div>
@@ -343,25 +340,7 @@
 					/>
 				</div>
 
-				<div class="form-row">
-					<div class="form-group">
-						<label for="dateFrom">Fecha Desde</label>
-						<input
-							id="dateFrom"
-							type="date"
-							bind:value={formData.query.dateFrom}
-						/>
-					</div>
-
-					<div class="form-group">
-						<label for="dateTo">Fecha Hasta</label>
-						<input
-							id="dateTo"
-							type="date"
-							bind:value={formData.query.dateTo}
-						/>
-					</div>
-				</div>
+				<!-- Fechas eliminadas: ahora se usan las fechas del gráfico Timeline -->
 
 				<div class="form-group">
 					<label for="color">Color</label>

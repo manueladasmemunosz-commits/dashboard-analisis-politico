@@ -32,23 +32,53 @@ function getGroupKey(dateStr, timeStr, granularity) {
 		return `${match[1]} ${match[2]}`;
 	}
 
-	const date = new Date(dateStr);
+	// Parsear fecha como UTC para evitar problemas de zona horaria
+	const parts = dateStr.split('-');
+	if (parts.length !== 3) {
+		console.warn('⚠️ Formato de fecha inválido:', dateStr);
+		return null;
+	}
 
+	const [year, month, day] = parts.map(x => parseInt(x));
+
+	// Validar que sean números válidos
+	if (isNaN(year) || isNaN(month) || isNaN(day)) {
+		console.warn('⚠️ Partes de fecha no numéricas:', dateStr, { year, month, day });
+		return null;
+	}
+
+	const date = new Date(Date.UTC(year, month - 1, day));
+
+	if (isNaN(date.getTime())) {
+		console.warn('⚠️ Fecha inválida después de parsear:', dateStr);
+		return null;
+	}
+
+	let result;
 	if (granularity === 'day') {
 		// Formato: YYYY-MM-DD
-		return dateStr;
+		result = dateStr;
 	} else if (granularity === 'week') {
-		// Formato: YYYY-WW (año-semana)
-		const oneJan = new Date(date.getFullYear(), 0, 1);
+		// Formato: YYYY-WW (año-semana) usando UTC
+		const oneJan = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
 		const numberOfDays = Math.floor((date - oneJan) / (24 * 60 * 60 * 1000));
-		const weekNum = Math.ceil((numberOfDays + oneJan.getDay() + 1) / 7);
-		return `${date.getFullYear()}-W${weekNum.toString().padStart(2, '0')}`;
+		const weekNum = Math.ceil((numberOfDays + oneJan.getUTCDay() + 1) / 7);
+		result = `${date.getUTCFullYear()}-W${weekNum.toString().padStart(2, '0')}`;
 	} else if (granularity === 'month') {
-		// Formato: YYYY-MM
-		const month = (date.getMonth() + 1).toString().padStart(2, '0');
-		return `${date.getFullYear()}-${month}`;
+		// Formato: YYYY-MM usando UTC
+		const monthNum = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+		result = `${date.getUTCFullYear()}-${monthNum}`;
+	} else {
+		console.warn('⚠️ Granularidad desconocida:', granularity);
+		result = dateStr; // fallback
 	}
-	return dateStr; // fallback
+
+	// Log solo para las primeras 3 fechas para debug
+	if (Math.random() < 0.001) {
+		console.log(`🔍 getGroupKey: "${dateStr}" + granularity="${granularity}" → "${result}"`);
+	}
+
+	return result;
 }
 
 // Función para procesar un dataset
@@ -94,7 +124,10 @@ function processDataset(dataset, granularity, label, chunkSize) {
 self.onmessage = function(e) {
 	const { posts, granularity = 'day', comparativeEnabled = false, dataB = [], chunkSize = 10000 } = e.data;
 
-	console.log(`🔧 Timeline Worker: Procesando ${posts.length} posts con granularidad ${granularity}...`);
+	console.log(`🔧 Timeline Worker START`);
+	console.log(`   📊 Posts: ${posts.length}`);
+	console.log(`   📅 Granularidad recibida: "${granularity}" (tipo: ${typeof granularity})`);
+	console.log(`   🔄 Comparativo: ${comparativeEnabled}`);
 	const startTime = performance.now();
 
 	// Procesar dataset principal
@@ -132,8 +165,11 @@ self.onmessage = function(e) {
 	const endTime = performance.now();
 	const duration = (endTime - startTime).toFixed(2);
 
+	const keysA = Object.keys(resultA.dateGroups).sort();
 	console.log(`✅ Timeline Worker: Procesamiento completado en ${duration}ms`);
-	console.log(`📊 Timeline Worker: ${Object.keys(resultA.dateGroups).length} períodos encontrados`);
+	console.log(`📊 Timeline Worker: ${keysA.length} períodos encontrados`);
+	console.log(`📝 Primeras 5 claves generadas:`, keysA.slice(0, 5));
+	console.log(`📝 Últimas 5 claves generadas:`, keysA.slice(-5));
 
 	// Enviar resultado final
 	self.postMessage({

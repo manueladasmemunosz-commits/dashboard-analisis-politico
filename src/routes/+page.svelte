@@ -18,6 +18,8 @@
 	import ProjectComparisonView from '$lib/components/ProjectComparisonView.svelte';
 	import MediaListView from '$lib/components/MediaListView.svelte';
 	import UserTimelineView from '$lib/components/UserTimelineView.svelte';
+	import MediosNacionalVsRegionalChart from '$lib/components/charts/MediosNacionalVsRegionalChart.svelte';
+	import MediosVolumenRegionChart from '$lib/components/charts/MediosVolumenRegionChart.svelte';
 	import Papa from 'papaparse';
 
 	let totalPosts = 0;
@@ -37,7 +39,11 @@
 		heatmapMetric: 'posts', // 'posts' o 'engagement'
 		comparativeEnabled: false,
 		dateFromB: today,
-		dateToB: today
+		dateToB: today,
+		// Comparación de proyectos
+		projectComparisonEnabled: false,
+		selectedProjectIds: [],
+		projectsData: {} // { projectId: [posts...] }
 	};
 
 	let topPostsConfig = {
@@ -112,12 +118,35 @@
 		selectedNetworks: ['all']
 	};
 
+	// Configuraciones para gráficos de Medios
+	let mediosTimelineConfig = {
+		type: 'line',
+		dateFrom: today,
+		dateTo: today,
+		granularity: 'day'
+	};
+
+	let mediosNacionalVsRegionalConfig = {
+		type: 'doughnut'
+	};
+
+	let mediosVolumenRegionConfig = {
+		type: 'bar'
+	};
+
+	let mediosWordCloudConfig = {
+		limit: 80,
+		dateFrom: today,
+		dateTo: today
+	};
+
 	// Estado de Word Cloud (carga diferida)
 	let wordCloudEnabled = false;
+	let mediosWordCloudEnabled = false;
 
 	// Actualizar Word Cloud automáticamente cuando cambien los filtros (si está habilitado)
-	$: if (wordCloudEnabled && $filteredData) {
-		processWordCloudData($filteredData);
+	$: if (wordCloudEnabled && socialMediaPosts) {
+		processWordCloudData(socialMediaPosts);
 	}
 
 	// Estado de Scatter Chart (carga diferida)
@@ -156,6 +185,9 @@
 
 	// Estado de pestaña activa
 	let activeTab = 'main';
+
+	// Clasificación de medios por región
+	let mediosClassification = {};
 
 	function handleTabChange(event) {
 		activeTab = event.detail.tab;
@@ -219,6 +251,17 @@
 			const postDate = rawDate.replace(/\//g, '-');
 			return postDate >= timelineConfig.dateFromB && postDate <= timelineConfig.dateToB;
 		}) : [];
+
+	// Separar datos de RRSS vs Medios
+	$: socialMediaPosts = $filteredData.filter(post => {
+		const source = (post.source || '').toLowerCase();
+		return ['twitter', 'instagram', 'facebook', 'tiktok'].includes(source);
+	});
+
+	$: newsPosts = $filteredData.filter(post => {
+		const source = (post.source || '').toLowerCase();
+		return source === 'news';
+	});
 
 	// Actualizar estadísticas en el DOM
 	$: updateStats(totalPosts, filteredPosts, totalEngagement);
@@ -412,6 +455,93 @@
 		}, 100);
 	}
 
+	function handleProjectComparisonToggle(event) {
+		const { enabled, chartName } = event.detail;
+		console.log(`📊 Modo comparación de proyectos ${enabled ? 'activado' : 'desactivado'} en ${chartName}`);
+
+		if (chartName === 'timeline') {
+			timelineConfig.projectComparisonEnabled = enabled;
+
+			// Si se desactiva, limpiar los datos de proyectos
+			if (!enabled) {
+				timelineConfig.projectsData = {};
+				timelineConfig.selectedProjectIds = [];
+			}
+		}
+	}
+
+	async function handleProjectSelectionChanged(event) {
+		const { projectIds, chartName } = event.detail;
+		console.log(`📁 Proyectos seleccionados en ${chartName}:`, projectIds);
+
+		if (chartName === 'timeline') {
+			timelineConfig.selectedProjectIds = projectIds;
+
+			// Cargar datos para los proyectos seleccionados
+			await loadProjectsData(projectIds);
+		}
+	}
+
+	// IMPORTANTE: Esta función usa las fechas del Timeline (timelineConfig.dateFrom/dateTo)
+	// en lugar de las fechas guardadas en cada proyecto. Esto permite ajustar
+	// dinámicamente el rango de fechas sin tener que editar cada proyecto guardado.
+	async function loadProjectsData(projectIds) {
+		if (projectIds.length === 0) {
+			timelineConfig.projectsData = {};
+			return;
+		}
+
+		console.log(`🔄 Cargando datos para ${projectIds.length} proyectos...`);
+		isLoadingBigQuery = true;
+
+		try {
+			const newProjectsData = {};
+
+			for (let i = 0; i < projectIds.length; i++) {
+				const projectId = projectIds[i];
+				const proyecto = allProyectos.find(p => p.id === projectId);
+
+				if (!proyecto) {
+					console.warn(`⚠️ Proyecto ${projectId} no encontrado`);
+					continue;
+				}
+
+				console.log(`📥 Cargando datos para: ${proyecto.nombre} (${i + 1}/${projectIds.length})`);
+				console.log(`   📅 Fechas del Timeline: ${timelineConfig.dateFrom} → ${timelineConfig.dateTo}`);
+			console.log(`   🔍 SearchTerm: "${proyecto.query.searchTerm}"`);
+
+				const response = await fetch('/api/bigquery', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						searchTerm: proyecto.query.searchTerm,
+						dateFrom: timelineConfig.dateFrom,
+						dateTo: timelineConfig.dateTo
+					})
+				});
+
+				const result = await response.json();
+
+				if (result.success) {
+					newProjectsData[projectId] = result.data;
+					console.log(`✅ ${proyecto.nombre}: ${result.data.length} posts cargados`);
+				} else {
+					console.error(`❌ Error cargando ${proyecto.nombre}:`, result.error);
+					newProjectsData[projectId] = [];
+				}
+			}
+
+			timelineConfig.projectsData = newProjectsData;
+			console.log('✅ Todos los datos de proyectos cargados');
+
+		} catch (error) {
+			console.error('❌ Error cargando datos de proyectos:', error);
+			alert('Error al cargar datos de proyectos:\n' + error.message);
+		} finally {
+			isLoadingBigQuery = false;
+		}
+	}
+
 	async function handleUpdateComparison(event) {
 		const { proyectos } = event.detail;
 		console.log('🔄 Actualizando comparación para proyectos:', proyectos);
@@ -464,6 +594,36 @@
 		console.log('☁️ El botón "Buscar" consulta BigQuery automáticamente');
 		console.log('📄 Usa "Cargar CSV Local" solo si quieres analizar un archivo local');
 
+		// Cargar clasificación de medios desde mediosporregion.csv
+		try {
+			const response = await fetch('/mediosporregion.csv');
+			const text = await response.text();
+			const lines = text.split('\n');
+
+			// Saltar el header
+			for (let i = 1; i < lines.length; i++) {
+				const line = lines[i].trim();
+				if (!line) continue;
+
+				const parts = line.split(',');
+				if (parts.length >= 5) {
+					const medio = parts[0].toLowerCase();
+					const region = parts[2];
+					const ciudad = parts[3];
+					const tipo = parts[4];
+
+					mediosClassification[medio] = {
+						region: region,
+						ciudad: ciudad,
+						tipo: tipo  // 'Nacional' o 'Regional'
+					};
+				}
+			}
+			console.log('✅ Clasificación de medios cargada:', Object.keys(mediosClassification).length, 'medios');
+		} catch (error) {
+			console.error('❌ Error cargando clasificación de medios:', error);
+		}
+
 		// Cargar proyectos guardados al inicio
 		try {
 			const response = await fetch('/api/proyectos');
@@ -492,13 +652,41 @@
 		on:tabChange={handleTabChange}
 	/>
 
-	<!-- PESTAÑA PRINCIPAL -->
+	<!-- PESTAÑA RRSS -->
 	{#if activeTab === 'main'}
+
+	<!-- Sección de Comparación de Proyectos -->
+	{#if allProyectos.length > 0}
+	<div class="project-comparison-banner">
+		<div class="banner-content">
+			<div class="banner-header">
+				<h3>📊 Comparación de Proyectos</h3>
+				<p>Compara hasta 4 proyectos guardados en un mismo gráfico</p>
+			</div>
+			{#if !timelineConfig.projectComparisonEnabled}
+				<button class="activate-comparison-btn" on:click={() => {
+					timelineConfig.projectComparisonEnabled = true;
+					// Scroll al gráfico
+					setTimeout(() => {
+						document.getElementById('timeline-section')?.scrollIntoView({ behavior: 'smooth' });
+					}, 100);
+				}}>
+					🚀 Activar Comparación
+				</button>
+			{:else}
+				<div class="comparison-active-info">
+					✓ Modo comparación activo - Ve al gráfico Timeline para seleccionar proyectos
+				</div>
+			{/if}
+		</div>
+	</div>
+	{/if}
+
 	<!-- Sección Word Cloud (Feature Destacada) - CARGA DIFERIDA -->
 	<div id="wordcloud-section" class="analysis-section featured-section">
 		<div class="section-header">
-			<h2 class="section-title">☁️ Nube de Palabras</h2>
-			<p class="section-description">Palabras más frecuentes en los posts (excluye stopwords)</p>
+			<h2 class="section-title">☁️ Nube de Palabras (RRSS)</h2>
+			<p class="section-description">Palabras más frecuentes en redes sociales (excluye stopwords)</p>
 		</div>
 		<div class="charts-row single-chart">
 			{#if wordCloudEnabled}
@@ -526,10 +714,10 @@
 						<h3>⚠️ Word Cloud - Carga Manual</h3>
 						<p>Esta visualización procesa grandes cantidades de texto.</p>
 						<p>Click para cargar la nube de palabras:</p>
-						<button class="load-wordcloud-btn" on:click={() => { wordCloudEnabled = true; processWordCloudData($filteredData); }}>
+						<button class="load-wordcloud-btn" on:click={() => { wordCloudEnabled = true; processWordCloudData(socialMediaPosts); }}>
 							☁️ Cargar Word Cloud
 						</button>
-						<p class="placeholder-hint">Recomendado después de cargar tus datos CSV</p>
+						<p class="placeholder-hint">Palabras de redes sociales (Twitter, Instagram, Facebook, TikTok)</p>
 					</div>
 				</div>
 			{/if}
@@ -539,15 +727,15 @@
 	<!-- Sección Principal de Análisis -->
 	<div id="main-section" class="analysis-section">
 		<div class="section-header">
-			<h2 class="section-title">📊 Análisis Principal</h2>
-			<p class="section-description">Métricas clave y tendencias temporales</p>
+			<h2 class="section-title">📱 Análisis de Redes Sociales</h2>
+			<p class="section-description">Métricas clave y tendencias en Twitter, Instagram, Facebook y TikTok</p>
 		</div>
 
 		<!-- Empty State cuando no hay datos -->
-		{#if $filteredData.length === 0 && !isLoadingBigQuery}
+		{#if socialMediaPosts.length === 0 && !isLoadingBigQuery}
 			<EmptyState
 				icon="🔍"
-				title="No hay datos para mostrar"
+				title="No hay datos de redes sociales para mostrar"
 				description="Realiza una búsqueda para comenzar a visualizar datos"
 				suggestions={[
 					'Usa el botón "Buscar" para consultar datos de BigQuery',
@@ -560,9 +748,8 @@
 		{/if}
 
 		<!-- Gráficos (solo mostrar si hay datos) -->
-		{#if $filteredData.length > 0}
-		<div class="charts-row">
-			<!-- Timeline Analytics -->
+		<div class="charts-row" id="timeline-section">
+			<!-- Timeline Analytics - Siempre visible para permitir comparación de proyectos -->
 			<ChartWidget
 				title="📅 Timeline Analytics"
 				chartName="timeline"
@@ -579,17 +766,30 @@
 				showLimitControls={false}
 				showGranularityControls={true}
 				showComparativeMode={timelineConfig.type !== 'heatmap'}
+				showProjectComparison={true}
+				bind:projectComparisonEnabled={timelineConfig.projectComparisonEnabled}
+				bind:selectedProjectIds={timelineConfig.selectedProjectIds}
+				availableProjects={allProyectos}
+				on:projectComparisonToggle={handleProjectComparisonToggle}
+				on:projectSelectionChanged={handleProjectSelectionChanged}
 			>
 				<TimelineChart
-					data={timelineConfig.type === 'heatmap' ? $rawData : $filteredData}
+					data={timelineConfig.type === 'heatmap' ? $rawData : socialMediaPosts}
 					dataB={filteredDataB}
 					chartType={timelineConfig.type}
 					granularity={timelineConfig.granularity}
 					heatmapMetric={timelineConfig.heatmapMetric}
 					comparativeEnabled={timelineConfig.comparativeEnabled && timelineConfig.type !== 'heatmap'}
+					projectComparisonEnabled={timelineConfig.projectComparisonEnabled}
+					projectsData={timelineConfig.projectsData}
+					projects={allProyectos}
 				/>
 			</ChartWidget>
+		</div>
 
+		<!-- Gráficos adicionales (solo si hay datos) -->
+		{#if socialMediaPosts.length > 0}
+		<div class="charts-row">
 			<!-- Top Posts -->
 			<ChartWidget
 				title="🏆 Top Posts"
@@ -606,7 +806,7 @@
 				showLimitControls={true}
 			>
 				<TopPostsChart
-					data={$filteredData}
+					data={socialMediaPosts}
 					chartType={topPostsConfig.type}
 					limit={topPostsConfig.limit}
 				/>
@@ -614,43 +814,14 @@
 		</div>
 		{/if}
 	</div>
-	{/if}
 
-	<!-- PESTAÑA PROYECTOS -->
-	{#if activeTab === 'proyectos'}
-	<!-- Sección de Proyectos -->
-	<div id="proyectos-section" class="analysis-section">
-		<ProyectosView
-			bind:allProyectos
-			bind:selectedProyectoIds
-			on:aplicarProyecto={handleAplicarProyecto}
-			on:compararProyectos={handleCompararProyectos}
-			on:proyectosUpdated={(e) => { allProyectos = e.detail.proyectos; }}
-		/>
-	</div>
-	{/if}
-
-	<!-- PESTAÑA COMPARACIÓN -->
-	{#if activeTab === 'comparacion'}
-	<!-- Sección de Comparación de Proyectos -->
-	<div id="project-comparison-section" class="analysis-section">
-		<ProjectComparisonView
-			{comparisonData}
-			{allProyectos}
-			bind:selectedProyectoIds
-			on:updateComparison={handleUpdateComparison}
-		/>
-	</div>
-	{/if}
-
-	<!--  Sección de Comparación de Redes (siempre en Principal) -->
-	{#if activeTab === 'main'}
+	<!--  Sección de Comparación de Redes -->
 	<div id="network-comparison-section" class="analysis-section">
 		<div class="section-header">
 			<h2 class="section-title">🔀 Comparación de Redes Sociales</h2>
-			<p class="section-description">Compara el volumen de actividad entre diferentes redes o grupos de redes</p>
+			<p class="section-description">Compara el volumen de actividad entre Twitter, Instagram, Facebook y TikTok</p>
 		</div>
-		<NetworkComparisonWidget data={$dataFilteredByDatesOnly} />
+		<NetworkComparisonWidget data={socialMediaPosts} />
 	</div>
 
 	<!-- Sección de Análisis de Usuarios -->
@@ -680,7 +851,7 @@
 					showColorPaletteControls={true}
 				>
 					<ActiveUsersChart
-						data={$filteredData}
+						data={socialMediaPosts}
 						chartType={activeUsersConfig.type}
 						limit={activeUsersConfig.limit}
 						colorPalette={activeUsersConfig.colorPalette}
@@ -718,7 +889,7 @@
 					{#await import('$lib/components/charts/EngagementScatterChart.svelte')}
 						<div class="loading-placeholder">Cargando Scatter Plot...</div>
 					{:then module}
-						<svelte:component this={module.default} data={$filteredData} chartType={engagementScatterConfig.type} visualizationMode={engagementScatterConfig.visualizationMode} />
+						<svelte:component this={module.default} data={socialMediaPosts} chartType={engagementScatterConfig.type} visualizationMode={engagementScatterConfig.visualizationMode} />
 					{/await}
 				{:else}
 					<div class="scatterplot-placeholder">
@@ -729,7 +900,7 @@
 							<button class="load-scatter-btn" on:click={() => scatterChartEnabled = true}>
 								📊 Cargar Scatter Plot
 							</button>
-							<p class="placeholder-hint">Con {$filteredData.length.toLocaleString()} posts filtrados</p>
+							<p class="placeholder-hint">Con {socialMediaPosts.length.toLocaleString()} posts de RRSS</p>
 						</div>
 					</div>
 				{/if}
@@ -761,7 +932,7 @@
 					showLimitControls={true}
 				>
 					<HashtagsChart
-						data={$filteredData}
+						data={socialMediaPosts}
 						chartType={hashtagsConfig.type}
 						limit={hashtagsConfig.limit}
 					/>
@@ -777,7 +948,8 @@
 				</div>
 			{/if}
 
-			<!-- Sentiment - LAZY LOADING -->
+			<!-- Sentiment - COMENTADO (modelo no entrenado) -->
+			<!--
 			{#if chartLoadingStates.sentiment}
 				<ChartWidget
 					title="😊 Análisis de Sentimientos"
@@ -793,7 +965,7 @@
 					showLimitControls={false}
 				>
 					<SentimentChart
-						data={$filteredData}
+						data={socialMediaPosts}
 						chartType={sentimentConfig.type}
 					/>
 				</ChartWidget>
@@ -807,6 +979,7 @@
 					</div>
 				</div>
 			{/if}
+			-->
 		</div>
 
 		<div class="charts-row">
@@ -827,7 +1000,7 @@
 					showLimitControls={true}
 				>
 					<MentionsChart
-						data={$filteredData}
+						data={socialMediaPosts}
 						chartType={mentionsConfig.type}
 						limit={mentionsConfig.limit}
 					/>
@@ -859,7 +1032,7 @@
 					showLimitControls={false}
 				>
 					<PerformanceChart
-						data={$filteredData}
+						data={socialMediaPosts}
 						chartType={performanceConfig.type}
 					/>
 				</ChartWidget>
@@ -877,9 +1050,130 @@
 	</div>
 	{/if}
 
-	<!-- Lista de publicaciones por medio (solo en pestaña Principal) -->
-	{#if activeTab === 'main' && $filteredData && $filteredData.length > 0}
-		<MediaListView posts={$filteredData} />
+	<!-- PESTAÑA PROYECTOS -->
+	{#if activeTab === 'proyectos'}
+	<!-- Sección de Proyectos -->
+	<div id="proyectos-section" class="analysis-section">
+		<ProyectosView
+			bind:allProyectos
+			bind:selectedProyectoIds
+			on:aplicarProyecto={handleAplicarProyecto}
+			on:compararProyectos={handleCompararProyectos}
+			on:proyectosUpdated={(e) => { allProyectos = e.detail.proyectos; }}
+		/>
+	</div>
+	{/if}
+
+	<!-- PESTAÑA MEDIOS -->
+	{#if activeTab === 'medios'}
+	<!-- Lista de Medios (Protagonista) -->
+	<div id="medios-section" class="analysis-section">
+		<div class="section-header">
+			<h2 class="section-title">📰 Medios de Comunicación</h2>
+			<p class="section-description">Publicaciones de medios nacionales y regionales</p>
+		</div>
+		<MediaListView posts={newsPosts} />
+	</div>
+
+	<!-- Gráficos de Análisis de Medios -->
+	{#if newsPosts.length > 0}
+	<div id="medios-analytics-section" class="analysis-section">
+		<div class="section-header">
+			<h2 class="section-title">📊 Análisis de Medios</h2>
+			<p class="section-description">Visualización de volumen y distribución de publicaciones</p>
+		</div>
+
+		<div class="charts-row">
+			<!-- Timeline Analytics para Medios -->
+			<ChartWidget
+				title="📅 Timeline de Medios"
+				chartName="mediosTimeline"
+				bind:chartType={mediosTimelineConfig.type}
+				bind:dateFrom={mediosTimelineConfig.dateFrom}
+				bind:dateTo={mediosTimelineConfig.dateTo}
+				bind:granularity={mediosTimelineConfig.granularity}
+				chartTypes={['line', 'bar', 'area', 'areaSmooth']}
+				showLimitControls={false}
+				showGranularityControls={true}
+				showSocialControls={false}
+				showComparativeMode={false}
+			>
+				<TimelineChart
+					data={newsPosts}
+					chartType={mediosTimelineConfig.type}
+					granularity={mediosTimelineConfig.granularity}
+					comparativeEnabled={false}
+				/>
+			</ChartWidget>
+
+			<!-- Nacional vs Regional -->
+			<ChartWidget
+				title="🏛️ Nacional vs Regional"
+				chartName="mediosNacionalVsRegional"
+				bind:chartType={mediosNacionalVsRegionalConfig.type}
+				chartTypes={['doughnut', 'pie', 'bar']}
+				showDateControls={false}
+				showSocialControls={false}
+				showLimitControls={false}
+			>
+				<MediosNacionalVsRegionalChart
+					data={newsPosts}
+					chartType={mediosNacionalVsRegionalConfig.type}
+					mediosClassification={mediosClassification}
+				/>
+			</ChartWidget>
+		</div>
+
+		<div class="charts-row">
+			<!-- Volumen por Región -->
+			<ChartWidget
+				title="🗺️ Volumen por Región"
+				chartName="mediosVolumenRegion"
+				bind:chartType={mediosVolumenRegionConfig.type}
+				chartTypes={['bar', 'horizontalBar']}
+				showDateControls={false}
+				showSocialControls={false}
+				showLimitControls={false}
+			>
+				<MediosVolumenRegionChart
+					data={newsPosts}
+					chartType={mediosVolumenRegionConfig.type}
+					mediosClassification={mediosClassification}
+				/>
+			</ChartWidget>
+
+			<!-- Word Cloud para Medios -->
+			<ChartWidget
+				title="☁️ Nube de Palabras - Medios"
+				chartName="mediosWordCloud"
+				bind:limit={mediosWordCloudConfig.limit}
+				showLimitControls={true}
+				showDateControls={false}
+				showSocialControls={false}
+				showChartTypeControls={false}
+			>
+				{#if mediosWordCloudEnabled}
+					{#await import('$lib/components/charts/WordCloudChart.svelte')}
+						<div class="loading-placeholder">Cargando Word Cloud...</div>
+					{:then module}
+						<svelte:component this={module.default} limit={mediosWordCloudConfig.limit} />
+					{/await}
+				{:else}
+					<div class="wordcloud-placeholder">
+						<div class="placeholder-content">
+							<h3>⚠️ Word Cloud - Carga Manual</h3>
+							<p>Click para cargar la nube de palabras de medios:</p>
+							<button class="load-wordcloud-btn" on:click={() => { mediosWordCloudEnabled = true; processWordCloudData(newsPosts); }}>
+								☁️ Cargar Word Cloud
+							</button>
+							<p class="placeholder-hint">Palabras de {newsPosts.length.toLocaleString()} publicaciones de medios</p>
+						</div>
+					</div>
+				{/if}
+			</ChartWidget>
+		</div>
+	</div>
+	{/if}
 	{/if}
 
 	<!-- PESTAÑA USUARIOS -->
@@ -918,6 +1212,68 @@
 </div>
 
 <style>
+	/* Project Comparison Banner */
+	.project-comparison-banner {
+		margin: 1.5rem 0;
+		padding: 1.5rem;
+		background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+		border: 2px solid #0ea5e9;
+		border-radius: 12px;
+		box-shadow: 0 4px 6px rgba(14, 165, 233, 0.1);
+	}
+
+	.banner-content {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 2rem;
+	}
+
+	.banner-header h3 {
+		margin: 0 0 0.5rem 0;
+		font-size: 1.25rem;
+		color: #0369a1;
+	}
+
+	.banner-header p {
+		margin: 0;
+		color: #0c4a6e;
+		font-size: 0.9rem;
+	}
+
+	.activate-comparison-btn {
+		padding: 0.75rem 2rem;
+		background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+		color: white;
+		border: none;
+		border-radius: 8px;
+		font-size: 1rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.3s ease;
+		box-shadow: 0 4px 6px rgba(14, 165, 233, 0.3);
+		white-space: nowrap;
+	}
+
+	.activate-comparison-btn:hover {
+		background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+		box-shadow: 0 6px 12px rgba(14, 165, 233, 0.4);
+		transform: translateY(-2px);
+	}
+
+	.activate-comparison-btn:active {
+		transform: translateY(0);
+	}
+
+	.comparison-active-info {
+		padding: 0.75rem 1.5rem;
+		background: #ecfdf5;
+		color: #065f46;
+		border-radius: 8px;
+		font-weight: 500;
+		border: 2px solid #10b981;
+	}
+
 	/* Loading overlay styles */
 	.loading-overlay {
 		position: fixed;

@@ -11,6 +11,11 @@
 	export let comparativeEnabled = false;
 	export let dataB = []; // Datos del período B para comparación
 
+	// Comparación de proyectos
+	export let projectComparisonEnabled = false;
+	export let projectsData = {}; // { projectId: [posts...] }
+	export let projects = []; // Lista de proyectos para obtener nombres y colores
+
 	let canvas;
 	let chartInstance;
 	let mounted = false;
@@ -27,6 +32,9 @@
 	let dateGroupsA = {};
 	let dateGroupsB = {};
 
+	// State para comparación de proyectos
+	let projectsDateGroups = {}; // { projectId: { date: [posts...] } }
+
 	// Variables para onClick handler (necesitan estar en component scope)
 	let sortedKeys = [];
 	let sortedKeysB = [];
@@ -41,16 +49,102 @@
 		Chart.register(...registerables);
 	}
 
-	$: if (mounted && data.length > 0 && !isHeatmap) {
-		processDataWithWorker();
+	// Re-procesar datos cuando cambien las dependencias críticas
+	$: if (mounted && !isHeatmap) {
+		// Observar cambios en: data, granularity, projectsData, comparativeEnabled, dataB
+		const shouldProcess = data || granularity || projectsData || comparativeEnabled || dataB;
+
+		if (shouldProcess && (data.length > 0 || projectComparisonEnabled)) {
+			console.log('🔄 Reactive: Re-procesando datos (granularity:', granularity, ')');
+			processDataWithWorker();
+		}
 	}
 
-	$: if (mounted && canvas && Object.keys(dateGroupsA).length > 0 && !isHeatmap && (chartType || granularity || heatmapMetric)) {
-		createChart();
+	$: if (mounted && canvas && !isHeatmap && (chartType || granularity || heatmapMetric || projectsDateGroups)) {
+		// Re-renderizar cuando cambien datos de proyectos o datos normales
+		if (projectComparisonEnabled && Object.keys(projectsDateGroups).length > 0) {
+			console.log('🔄 Reactive: Renderizando comparación de proyectos...', Object.keys(projectsDateGroups));
+			createChart();
+		} else if (Object.keys(dateGroupsA).length > 0) {
+			createChart();
+		}
 	}
 
-	function processDataWithWorker() {
-		if (!worker || !data || data.length === 0) return;
+	async function processDataWithWorker() {
+		if (!worker) return;
+
+		// Modo comparación de proyectos
+		if (projectComparisonEnabled && Object.keys(projectsData).length > 0) {
+			console.log(`🔧 Procesando ${Object.keys(projectsData).length} proyectos con Worker...`);
+			isProcessing = true;
+			processingProgress = 0;
+
+			// Procesar cada proyecto por separado
+			const newProjectsDateGroups = {};
+
+			for (const [projectId, projectPosts] of Object.entries(projectsData)) {
+				if (!projectPosts || projectPosts.length === 0) continue;
+
+				console.log(`🔧 Procesando proyecto ${projectId}: ${projectPosts.length} posts`);
+
+				// Crear promesa para esperar resultado del worker
+				const result = await new Promise((resolve) => {
+					const handler = (e) => {
+						if (e.data.type === 'complete') {
+							worker.removeEventListener('message', handler);
+							resolve(e.data.data.dateGroupsA);
+						}
+					};
+					worker.addEventListener('message', handler);
+
+					worker.postMessage({
+						posts: projectPosts,
+						granularity: granularity,
+						comparativeEnabled: false,
+						dataB: [],
+						chunkSize: 10000
+					});
+				});
+
+				newProjectsDateGroups[projectId] = result;
+
+				// Debug: Verificar datos del proyecto recién procesado
+				const sampleDates = Object.keys(result).slice(0, 3);
+				console.log(`   ✓ Proyecto ${projectId} procesado:`, {
+					totalDates: Object.keys(result).length,
+					sampleDates,
+					sampleCounts: sampleDates.map(date => result[date] ? result[date].length : 0)
+				});
+			}
+
+			// Debug: Verificar que newProjectsDateGroups tiene datos diferentes
+			console.log('🔍 Verificando newProjectsDateGroups antes de asignación:');
+			for (const [projectId, dateGroups] of Object.entries(newProjectsDateGroups)) {
+				const allDates = Object.keys(dateGroups);
+				const totalPosts = allDates.reduce((sum, date) => sum + (dateGroups[date] ? dateGroups[date].length : 0), 0);
+				console.log(`   ${projectId}: ${allDates.length} fechas, ${totalPosts} posts totales`);
+			}
+
+			projectsDateGroups = newProjectsDateGroups;
+			isProcessing = false;
+			processingProgress = 100;
+
+			console.log('✅ ProjectsDateGroups actualizado:', Object.keys(projectsDateGroups));
+			console.log('🎨 Canvas existe?', !!canvas);
+			console.log('📊 projectComparisonEnabled?', projectComparisonEnabled);
+
+			// Trigger chart creation
+			if (canvas) {
+				console.log('🚀 Llamando a createChart() directamente...');
+				createChart();
+			} else {
+				console.warn('⚠️ Canvas no existe, esperando reactive statement');
+			}
+			return;
+		}
+
+		// Modo normal o comparativo A/B
+		if (!data || data.length === 0) return;
 
 		console.log(`🔧 Iniciando procesamiento de ${data.length} posts con Worker...`);
 		isProcessing = true;
@@ -132,23 +226,29 @@
 			return dateObj.toLocaleDateString('es-CL', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 		} else if (gran === 'week') {
 			const [year, week] = groupKey.split('-W');
+			const yearNum = parseInt(year);
+			const weekNum = parseInt(week);
 
-			// Calcular fecha de inicio de la semana (mismo algoritmo que el worker)
-			const oneJan = new Date(year, 0, 1);
-			const dayOfWeek = oneJan.getDay();
+			// Calcular la fecha del primer día de la semana usando el mismo algoritmo que el worker
+			const oneJan = new Date(Date.UTC(yearNum, 0, 1));
+			const dayOfWeek = oneJan.getUTCDay();
 
-			// Calcular días desde inicio del año hasta el inicio de esta semana
-			// El algoritmo del worker agrupa por: Math.ceil((numberOfDays + oneJan.getDay() + 1) / 7)
-			// Para la semana N, queremos el primer día de esa agrupación
-			const daysToAdd = (parseInt(week) - 1) * 7 - dayOfWeek;
+			// El worker calcula: Math.ceil((numberOfDays + oneJan.getUTCDay() + 1) / 7)
+			// Para obtener el primer día de la semana N, necesitamos invertir esta fórmula
+			// La semana 1 incluye días desde el inicio del año
+			// Necesitamos encontrar el primer día donde ceil((días + dayOfWeek + 1) / 7) = weekNum
 
-			const weekStartDate = new Date(year, 0, 1 + daysToAdd);
+			// El primer día de la semana N es cuando (días + dayOfWeek + 1) / 7 >= weekNum
+			// Resolviendo: días >= weekNum * 7 - dayOfWeek - 1
+			const firstDayOffset = (weekNum - 1) * 7 - dayOfWeek;
 
-			// Formatear la fecha de inicio de la semana
+			// Crear fecha sumando los días al 1 de enero
+			const weekStartDate = new Date(Date.UTC(yearNum, 0, 1 + firstDayOffset));
+
+			// Formatear como "24 jun"
 			return weekStartDate.toLocaleDateString('es-CL', {
 				day: 'numeric',
 				month: 'short',
-				year: 'numeric',
 				timeZone: 'UTC'
 			});
 		} else if (gran === 'month') {
@@ -259,8 +359,18 @@
 
 	function createChart() {
 		if (!canvas) return;
-		if (!comparativeEnabled && Object.keys(dateGroupsA).length === 0) return;
-		if (comparativeEnabled && (Object.keys(dateGroupsA).length === 0 || Object.keys(dateGroupsB).length === 0)) return;
+
+		// Validaciones según modo
+		if (projectComparisonEnabled) {
+			// Modo comparación de proyectos
+			if (Object.keys(projectsDateGroups).length === 0) return;
+		} else if (comparativeEnabled) {
+			// Modo comparativo A/B
+			if (Object.keys(dateGroupsA).length === 0 || Object.keys(dateGroupsB).length === 0) return;
+		} else {
+			// Modo normal
+			if (Object.keys(dateGroupsA).length === 0) return;
+		}
 
 		// Destruir gráfico existente
 		if (chartInstance) {
@@ -283,8 +393,50 @@
 
 		let labels, chartData;
 		let chartDataB;
+		let projectsChartData = {}; // { projectId: [values...] }
 
-		if (comparativeEnabled) {
+		if (projectComparisonEnabled) {
+			// Modo comparación de proyectos: crear series para cada proyecto
+			console.log(`📊 Renderizando ${Object.keys(projectsDateGroups).length} proyectos...`);
+
+			// Obtener todas las fechas únicas de todos los proyectos
+			const allDates = new Set();
+			Object.values(projectsDateGroups).forEach(dateGroups => {
+				Object.keys(dateGroups).forEach(date => allDates.add(date));
+			});
+
+			// Ordenar fechas
+			sortedKeys = Array.from(allDates).sort();
+			console.log(`🔍 sortedKeys generadas: ${sortedKeys.length} fechas únicas`, sortedKeys.slice(0, 5));
+
+			// Crear labels
+			labels = sortedKeys.map((key, index) => {
+				const previousKey = index > 0 ? sortedKeys[index - 1] : null;
+				return formatLabel(key, granularity, previousKey);
+			});
+
+			// Crear datos para cada proyecto
+			for (const [projectId, dateGroups] of Object.entries(projectsDateGroups)) {
+				console.log(`🔍 Mapping data for project: ${projectId}`);
+				console.log(`   Available dates:`, Object.keys(dateGroups).length);
+				console.log(`   First 3 dates:`, Object.keys(dateGroups).slice(0, 3));
+				console.log(`   Sample counts:`, Object.keys(dateGroups).slice(0, 3).map(key =>
+					dateGroups[key] ? dateGroups[key].length : 0
+				));
+
+				projectsChartData[projectId] = sortedKeys.map(key => {
+					if (dateGroups[key]) {
+						return calculateMetric(dateGroups[key]);
+					}
+					return 0; // Si no hay datos para esa fecha, poner 0
+				});
+
+				console.log(`   Result array sample:`, projectsChartData[projectId].slice(0, 5));
+				console.log(`   Result total:`, projectsChartData[projectId].reduce((sum, val) => sum + val, 0));
+			}
+
+			console.log(`📊 ${sortedKeys.length} puntos temporales para ${Object.keys(projectsChartData).length} proyectos`);
+		} else if (comparativeEnabled) {
 			// Modo comparativo: usar datos procesados por el worker
 			const aligned = alignComparativePeriods(dateGroupsA, dateGroupsB);
 
@@ -342,7 +494,50 @@
 			{ bg: '#ef4444', border: '#dc2626' }   // Rojo Chile
 		];
 
-		if (comparativeEnabled) {
+		if (projectComparisonEnabled) {
+			// Modo comparación de proyectos: crear un dataset por proyecto
+			console.log('🔍 DEBUG projectsChartData:', projectsChartData);
+
+			Object.entries(projectsChartData).forEach(([projectId, data], index) => {
+				const proyecto = projects.find(p => p.id === projectId);
+
+				console.log(`📊 Dataset ${index + 1}:`, {
+					projectId,
+					proyectoEncontrado: !!proyecto,
+					nombreProyecto: proyecto?.nombre,
+					color: proyecto?.color,
+					dataLength: data.length,
+					dataSample: data.slice(0, 3),
+					dataTotal: data.reduce((sum, val) => sum + val, 0)
+				});
+
+				if (!proyecto) {
+					console.warn(`⚠️ Proyecto ${projectId} no encontrado en la lista`);
+					return;
+				}
+
+				const projectColor = proyecto.color || '#3498db';
+
+				const dataset = {
+					label: proyecto.nombre,
+					data: data,
+					borderColor: projectColor,
+					borderWidth: 2,
+					backgroundColor: chartType === 'bar' ? projectColor : `${projectColor}33`, // 33 = 20% opacity
+					fill: isAreaChart,
+					tension: 0.4,
+					pointBackgroundColor: projectColor,
+					pointBorderColor: projectColor,
+					pointRadius: isAreaChart ? 0 : 3,
+					pointHoverRadius: 6,
+				};
+
+				datasets.push(dataset);
+				console.log(`✅ Dataset creado:`, dataset.label, 'con color', projectColor);
+			});
+
+			console.log(`✅ ${datasets.length} datasets creados para proyectos`);
+		} else if (comparativeEnabled) {
 			// Para areaSmooth: ordenar por volumen (menor abajo, mayor arriba)
 			const series = [
 				{ label: 'Período A', data: chartData, totalVolume: chartData.reduce((sum, val) => sum + val, 0), colorIndex: 0 },
@@ -461,7 +656,9 @@
 				plugins: {
 					title: {
 						display: true,
-						text: comparativeEnabled ?
+						text: projectComparisonEnabled ?
+							`Comparación de Proyectos - ${heatmapMetric === 'engagement' ? 'Engagement' : 'Posts'} ${granularityLabels[granularity]}${isAreaChart ? ' (Área)' : ''}` :
+							comparativeEnabled ?
 							`Comparación A/B - ${heatmapMetric === 'engagement' ? 'Engagement' : 'Posts'} ${granularityLabels[granularity]}${isAreaChart ? ' (Área)' : ''}` :
 							`Evolución temporal de ${heatmapMetric === 'engagement' ? 'engagement' : 'posts'} ${granularityLabels[granularity]}${isAreaChart ? ' (Área)' : ''}`
 					},
@@ -577,7 +774,7 @@
 </script>
 
 <div class="timeline-container">
-	{#if data.length === 0}
+	{#if data.length === 0 && !projectComparisonEnabled}
 		<div class="no-data-message">
 			<div class="no-data-icon">📊</div>
 			<h3>No hay datos disponibles</h3>

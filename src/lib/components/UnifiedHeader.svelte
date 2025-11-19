@@ -41,9 +41,9 @@
 		// Scroll suave a la sección correspondiente
 		const sectionMap = {
 			'main': 'main-section',
-			'proyectos': 'proyectos-section',
-			'comparacion': 'project-comparison-section',
-			'usuarios': 'users-timeline-section'
+			'medios': 'medios-section',
+			'usuarios': 'users-timeline-section',
+			'proyectos': 'proyectos-section'
 		};
 
 		const sectionId = sectionMap[tab];
@@ -153,22 +153,15 @@
 				class="nav-tab {activeTab === 'main' ? 'active' : ''}"
 				on:click={() => handleTabClick('main')}
 			>
-				<span class="tab-icon">📊</span>
-				Principal
+				<span class="tab-icon">📱</span>
+				RRSS
 			</button>
 			<button
-				class="nav-tab {activeTab === 'proyectos' ? 'active' : ''}"
-				on:click={() => handleTabClick('proyectos')}
+				class="nav-tab {activeTab === 'medios' ? 'active' : ''}"
+				on:click={() => handleTabClick('medios')}
 			>
-				<span class="tab-icon">📁</span>
-				Proyectos
-			</button>
-			<button
-				class="nav-tab {activeTab === 'comparacion' ? 'active' : ''}"
-				on:click={() => handleTabClick('comparacion')}
-			>
-				<span class="tab-icon">🔄</span>
-				Comparación
+				<span class="tab-icon">📰</span>
+				Medios
 			</button>
 			<button
 				class="nav-tab {activeTab === 'usuarios' ? 'active' : ''}"
@@ -176,6 +169,13 @@
 			>
 				<span class="tab-icon">👥</span>
 				Usuarios
+			</button>
+			<button
+				class="nav-tab {activeTab === 'proyectos' ? 'active' : ''}"
+				on:click={() => handleTabClick('proyectos')}
+			>
+				<span class="tab-icon">⚙️</span>
+				Proyectos
 			</button>
 		</nav>
 	</div>

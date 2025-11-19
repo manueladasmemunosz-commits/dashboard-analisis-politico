@@ -11,47 +11,171 @@
 	let totalPages = 1;
 	let searchFilter = '';
 
+	// Filtros de tipo de medio
+	let mediaTypeFilters = {
+		Nacional: true,
+		Regional: true
+	};
+	let mediaClassification = {}; // Mapa de dominio -> { tipo, region, ciudad }
+
+	// Lista de medios excluidos (filtrados de la visualización)
+	const excludedMediaDomains = [
+		'elmartutino.cl'
+	];
+
 	// Modal state
 	let showModal = false;
 	let selectedPosts = [];
 	let selectedTitle = '';
 
-	// Mapeo de dominios a nombres de medios chilenos
+	// Cargar clasificación de medios
+	onMount(async () => {
+		try {
+			const response = await fetch('/mediosporregion.csv');
+			const text = await response.text();
+			const lines = text.split('\n');
+
+			// Saltar el header
+			for (let i = 1; i < lines.length; i++) {
+				const line = lines[i].trim();
+				if (!line) continue;
+
+				const parts = line.split(',');
+				if (parts.length >= 5) {
+					const domain = parts[0].trim();
+					const region = parts[2]?.trim() || '';
+					const ciudad = parts[3]?.trim() || '';
+					const tipo = parts[4].trim();
+					if (domain && tipo) {
+						mediaClassification[domain] = { tipo, region, ciudad };
+					}
+				}
+			}
+			console.log('✅ Clasificación de medios cargada:', Object.keys(mediaClassification).length, 'medios');
+		} catch (error) {
+			console.error('❌ Error cargando clasificación de medios:', error);
+		}
+	});
+
+	// Mapeo extenso de dominios a nombres de medios chilenos
 	const mediaNames = {
+		// Medios nacionales
 		'latercera.com': 'La Tercera',
 		'emol.com': 'Emol',
-		'biobiochile.cl': 'BioBioChile',
+		'biobiochile.cl': 'BioBio',
 		'lacuarta.com': 'La Cuarta',
 		'elmostrador.cl': 'El Mostrador',
-		'cnnchile.com': 'CNN Chile',
+		'cnnchile.com': 'CNN',
+		'pnt.cl': 'Puranoticia',
+		'uchile.cl': 'Radio UCH',
+		'bbc.com': 'BBC',
 		't13.cl': 'T13',
-		'meganoticias.cl': 'Mega',
+		'meganoticias.cl': 'Meganoticias',
 		'cooperativa.cl': 'Cooperativa',
 		'24horas.cl': '24 Horas',
-		'adnradio.cl': 'ADN',
+		'adnradio.cl': 'ADN Radio',
 		'df.cl': 'Diario Financiero',
 		'pulso.cl': 'Pulso',
 		'lun.com': 'LUN',
 		'pauta.cl': 'Pauta',
-		'ciper.cl': 'CIPER',
+		'ciperchile.cl': 'CIPER Chile',
 		'eldesconcierto.cl': 'El Desconcierto',
 		'ex-ante.cl': 'Ex-Ante',
 		'eldinamo.cl': 'El Dínamo',
-		'elciudadano.cl': 'El Ciudadano',
 		'chilevision.cl': 'Chilevisión',
 		'13.cl': 'Canal 13',
-		'tele13.cl': 'Tele 13',
 		'elmercurio.com': 'El Mercurio',
 		'lanacion.cl': 'La Nación',
 		'soychile.cl': 'Soy Chile',
 		'publimetro.cl': 'Publimetro',
 		'lasegunda.com': 'La Segunda',
 		'chvnoticias.cl': 'CHV Noticias',
-		'meganoticias.cl': 'Meganoticias',
 		'redgol.cl': 'RedGol',
+		'theclinic.cl': 'The Clinic',
+		'ellibero.cl': 'El Líbero',
+		'radioagricultura.cl': 'Radio Agricultura',
+		'nuevopoder.cl': 'Nuevo Poder',
+		'gamba.cl': 'Gamba',
+		'interferencia.cl': 'Interferencia',
+		'laizquierdadiario.cl': 'La Izquierda Diario',
+		'encancha.cl': 'En Cancha',
+
+		// Medios regionales - Norte
+		'aricaldia.cl': 'Arica al Día',
+		'elmorrocotudo.cl': 'El Morrocotudo',
+		'elsoldeiquique.cl': 'El Sol de Iquique',
+		'elreporterodeiquique.com': 'El Reportero de Iquique',
+		'tarapacaonline.cl': 'Tarapacá Online',
+		'ceinoticias.cl': 'CEI Noticias',
+		'timeline.cl': 'Timeline',
+		'antofagastaaldia.cl': 'Antofagasta al Día',
+		'diarioantofagasta.cl': 'Diario Antofagasta',
+		'calamaenlinea.cl': 'Calama en Línea',
+		'elnortero.cl': 'El Nortero',
+		'atacamanoticias.cl': 'Atacama Noticias',
+		'chanarcillo.cl': 'El Chanarcillo',
+		'tierramarillano.cl': 'El Tierra Amarillano',
+		'elzorronortino.cl': 'El Zorro Nortino',
+
+		// Medios regionales - Centro
+		'reportediario.cl': 'Reporte Diario',
+		'cronicadigital.cl': 'Crónica Digital',
+		'eldiarioeldia.cl': 'El Diario El Día',
+		'diarioeldia.cl': 'Diario El Día',
+		'elserenense.cl': 'El Serenense',
+		'fmdos.cl': 'FM Dos',
+		'laserenaonline.cl': 'La Serena Online',
+		'miradiols.cl': 'Miradio LS',
+		'elovallino.cl': 'El Ovallino',
+		'elobservatodo.cl': 'El Observatodo',
+		'ovallehoy.cl': 'Ovalle Hoy',
+		'losandesonline.cl': 'Los Andes Online',
+		'epicentrochile.com': 'Epicentro Chile',
+		'observador.cl': 'El Observador',
+		'eltipografo.cl': 'El Tipógrafo',
+		'elmartutino.cl': 'El Martutino',
+		'elrepuertero.cl': 'El Repuertero',
+		'laprensaaustral.cl': 'La Prensa Austral',
+
+		// Medios regionales - Sur
+		'elrancaguino.cl': 'El Rancagüino',
+		'elrancahuaso.cl': 'El Rancahuaso',
+		'diariolaprensa.cl': 'Diario La Prensa',
+		'diarioelcentro.cl': 'Diario El Centro',
+		'diariotalca.cl': 'Diario Talca',
+		'chicureohoy.cl': 'Chillán Hoy',
+		'ladiscusion.cl': 'La Discusión',
+		'nubleonline.cl': 'Ñuble Online',
+		'sancarlosonline.cl': 'San Carlos Online',
+		'elvacanudo.cl': 'El Vacanudo',
+		'contactoconce.cl': 'Contacto Conce',
+		'latribuna.cl': 'La Tribuna',
+		'publimicro.cl': 'Publimicro',
+		'elcontraste.cl': 'El Contraste',
+		'lavozdepucon.cl': 'La Voz de Pucón',
+		'araucaniadiario.cl': 'Araucanía Diario',
+		'temucotelevision.cl': 'Temuco Televisión',
+		'diariolagoranco.cl': 'Diario Lago Ranco',
+		'diariodevaldivia.cl': 'Diario de Valdivia',
+		'rioenlinea.cl': 'Río en Línea',
+		'vilasradio.cl': 'Vilas Radio',
+		'diariochiloe.cl': 'Diario Chiloé',
+		'elinsular.cl': 'El Insular',
+		'diariodeosorno.cl': 'Diario de Osorno',
+		'paislobo.cl': 'Pais Lobo',
+		'elcalbucano.cl': 'El Calbucano',
+		'elhuemul.cl': 'El Huemul',
+		'eha.cl': 'El Heraldo Austral',
+		'diarioregionalaysen.cl': 'Diario Regional Aysén',
 		'elpinguino.com': 'El Pingüino',
-		'australtemuco.cl': 'El Austral',
-		'soychile.cl': 'Soy Chile'
+		'elmagallanews.cl': 'El Magallanews',
+
+		// Radios y otros
+		'radiocontacto.cl': 'Radio Contacto',
+		'radiosago.cl': 'Radio Sago',
+		'radioudec.cl': 'Radio UdeC',
+		'radioprensa.cl': 'Radio Prensa',
+		'uatv.cl': 'UATV'
 	};
 
 	// Función para convertir dominio a nombre legible del medio
@@ -60,26 +184,76 @@
 
 		const lowerDomain = domain.toLowerCase();
 
-		// Buscar en el mapeo
+		// Buscar en el mapeo manual
 		if (mediaNames[lowerDomain]) {
 			return mediaNames[lowerDomain];
 		}
 
-		// Si no está en el mapeo, limpiar y capitalizar
-		// Remover extensión (.com, .cl, etc.)
+		// Si no está en el mapeo, intentar construir nombre legible
 		let name = lowerDomain.split('.')[0];
 
-		// Casos especiales de nombres con números
+		// Casos especiales de números
 		if (name === 't13' || name === 'tele13') return 'T13';
 		if (name === '24horas') return '24 Horas';
 		if (name === '13') return 'Canal 13';
 
-		// Capitalizar primera letra de cada palabra
-		name = name.split(/[-_]/)
-			.map(word => word.charAt(0).toUpperCase() + word.slice(1))
-			.join(' ');
+		// Si el nombre es muy corto (iniciales), agregar contexto de ciudad
+		if (name.length <= 3 && mediaClassification[lowerDomain]) {
+			const info = mediaClassification[lowerDomain];
+			if (info.ciudad) {
+				return `${name.toUpperCase()} ${info.ciudad}`;
+			}
+		}
 
-		return name;
+		// Detectar y separar palabras comunes en español
+		const palabrasComunes = [
+			'el', 'la', 'los', 'las', 'de', 'del', 'diario', 'radio', 'noticias',
+			'online', 'digital', 'aldia', 'hoy', 'television', 'prensa', 'austral',
+			'norte', 'sur', 'chile', 'region', 'observa', 'todo', 'valle', 'puerto',
+			'voz', 'reportero', 'insular', 'tribuna', 'chicureo', 'contacto', 'tiempo'
+		];
+
+		// Intentar detectar palabras concatenadas
+		let resultado = name;
+		for (let palabra of palabrasComunes) {
+			// Detectar palabras al inicio
+			if (name.startsWith(palabra) && name.length > palabra.length) {
+				const resto = name.substring(palabra.length);
+				// Capitalizar ambas partes
+				resultado = capitalizeWord(palabra) + ' ' + capitalizeFirstLetter(resto);
+				break;
+			}
+			// Detectar palabras al final
+			if (name.endsWith(palabra) && name.length > palabra.length) {
+				const inicio = name.substring(0, name.length - palabra.length);
+				resultado = capitalizeFirstLetter(inicio) + ' ' + capitalizeWord(palabra);
+				break;
+			}
+		}
+
+		// Si no detectamos palabras, capitalizar con guiones/guiones bajos
+		if (resultado === name) {
+			resultado = name.split(/[-_]/)
+				.map(word => capitalizeFirstLetter(word))
+				.join(' ');
+		}
+
+		return resultado;
+	}
+
+	// Función auxiliar para capitalizar palabra
+	function capitalizeWord(word) {
+		const articulos = ['el', 'la', 'los', 'las', 'de', 'del', 'al'];
+		if (articulos.includes(word.toLowerCase())) {
+			return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+		}
+		return capitalizeFirstLetter(word);
+	}
+
+	// Función auxiliar para capitalizar primera letra
+	function capitalizeFirstLetter(str) {
+		if (!str) return '';
+		return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 	}
 
 	// Función para extraer dominio del link
@@ -176,12 +350,15 @@
 		processedPosts = filtered
 			.map(post => {
 				const domain = extractDomain(post.link);
+				const mediaInfo = mediaClassification[domain];
+				const mediaType = mediaInfo ? mediaInfo.tipo : 'Desconocido';
 				return {
 					...post,
 					domain: domain,
 					displayName: getDomainDisplayName(domain),
 					cleanedTitle: cleanTitle(post.text),
-					dateObj: new Date(post.created || 0)
+					dateObj: new Date(post.created || 0),
+					mediaType: mediaType
 				};
 			})
 			// FILTRAR posts de agregadores de noticias que no se pudieron resolver
@@ -191,7 +368,25 @@
 				if (domain === 'google.com' || domain === 'yahoo.com' || domain === 'desconocido') {
 					return false;
 				}
+				// Excluir medios de la lista de excluidos
+				if (excludedMediaDomains.includes(domain)) {
+					return false;
+				}
 				return true;
+			})
+			// FILTRAR por tipo de medio
+			.filter(post => {
+				// Si ambos filtros están activos o ambos inactivos, mostrar todo
+				const bothActive = mediaTypeFilters.Nacional && mediaTypeFilters.Regional;
+				const noneActive = !mediaTypeFilters.Nacional && !mediaTypeFilters.Regional;
+
+				if (bothActive || noneActive) return true;
+
+				// Si solo uno está activo, filtrar
+				if (mediaTypeFilters.Nacional && post.mediaType === 'Nacional') return true;
+				if (mediaTypeFilters.Regional && post.mediaType === 'Regional') return true;
+
+				return false;
 			})
 			.sort((a, b) => b.dateObj - a.dateObj)
 			.filter(post => {
@@ -255,6 +450,23 @@
 				bind:value={searchFilter}
 				class="search-input"
 			/>
+			<div class="filter-chips">
+				<span class="filter-label">Tipo de medio:</span>
+				<button
+					class="filter-chip"
+					class:active={mediaTypeFilters.Nacional}
+					on:click={() => mediaTypeFilters.Nacional = !mediaTypeFilters.Nacional}
+				>
+					📡 Medios Nacionales
+				</button>
+				<button
+					class="filter-chip"
+					class:active={mediaTypeFilters.Regional}
+					on:click={() => mediaTypeFilters.Regional = !mediaTypeFilters.Regional}
+				>
+					🏘️ Medios Regionales
+				</button>
+			</div>
 			<div class="stats">
 				<span class="total-count">{processedPosts.length} publicaciones</span>
 			</div>
@@ -373,6 +585,44 @@
 	.search-input:focus {
 		outline: none;
 		border-color: #3498db;
+	}
+
+	.filter-chips {
+		display: flex;
+		gap: 10px;
+		align-items: center;
+		flex-wrap: wrap;
+	}
+
+	.filter-label {
+		font-size: 14px;
+		font-weight: 600;
+		color: #2c3e50;
+	}
+
+	.filter-chip {
+		padding: 8px 16px;
+		border: 2px solid #bdc3c7;
+		border-radius: 20px;
+		background: white;
+		color: #7f8c8d;
+		font-size: 14px;
+		font-weight: 500;
+		cursor: pointer;
+		transition: all 0.3s;
+		user-select: none;
+	}
+
+	.filter-chip:hover {
+		border-color: #3498db;
+		background: #ecf0f1;
+	}
+
+	.filter-chip.active {
+		border-color: #3498db;
+		background: #3498db;
+		color: white;
+		font-weight: 600;
 	}
 
 	.stats {
