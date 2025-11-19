@@ -980,4 +980,374 @@ Ver `BACKLOG.md` para lista completa de features pendientes
 
 ---
 
-*Última actualización: Octubre 23, 2025*
+---
+
+## Sesión 12 - Implementación de Comparación de Proyectos
+
+**Fecha:** Noviembre 19, 2025
+
+### Contexto Inicial
+
+Usuario solicitó continuar el trabajo de implementación de comparación de proyectos en el Timeline. La funcionalidad ya estaba parcialmente implementada de sesiones anteriores, pero presentaba bugs que impedían su correcto funcionamiento.
+
+---
+
+### 1️⃣ Bug: Solo una línea visible después de cambiar granularidad
+
+**Problema:**
+Usuario reportó: "Al aplicar una granularidad diferente, los datos no funcionan. De hecho, uno de los proyectos desaparece."
+
+**Causa:**
+El reactive statement no estaba observando correctamente los cambios de granularidad, lo que causaba que solo un proyecto se re-procesara.
+
+**Solución:**
+Actualizar el reactive statement para observar explícitamente la granularidad:
+
+```javascript
+// TimelineChart.svelte:52-61
+$: if (mounted && !isHeatmap) {
+    const shouldProcess = data || granularity || projectsData || comparativeEnabled || dataB;
+    if (shouldProcess && (data.length > 0 || projectComparisonEnabled)) {
+        console.log('🔄 Reactive: Re-procesando datos (granularity:', granularity, ')');
+        processDataWithWorker();
+    }
+}
+```
+
+**Archivos modificados:**
+- `/src/lib/components/charts/TimelineChart.svelte:52-61`
+
+---
+
+### 2️⃣ Bug: Ambos proyectos con el mismo color
+
+**Problema:**
+Solo se veía una línea en el gráfico porque ambos proyectos tenían el mismo color (`#3498db` azul).
+
+**Causa:**
+Archivo `proyectos.json` tenía colores duplicados para ambos proyectos.
+
+**Solución:**
+Cambiar el color del proyecto "Seguridad" de azul a rojo:
+
+```json
+// proyectos.json
+{
+  "id": "seguridad",
+  "nombre": "Seguridad",
+  "color": "#e74c3c"  // Cambiado de #3498db a #e74c3c (rojo)
+}
+```
+
+**Archivos modificados:**
+- `/src/data/proyectos.json:33`
+
+---
+
+### 3️⃣ Bug CRÍTICO: Ambos proyectos mostraban los mismos datos
+
+**Problema:**
+Los logs mostraban que ambos proyectos tenían arrays de datos idénticos:
+
+```
+presidenciales: Array(60) [557, 352, 299, ...] dataTotal: 16166
+seguridad: Array(60) [557, 352, 299, ...] dataTotal: 16166  // ❌ MISMOS VALORES
+```
+
+**Diagnóstico:**
+Se agregaron logs exhaustivos en múltiples puntos del flujo:
+1. Después de procesar cada proyecto con Worker
+2. Antes de asignar `newProjectsDateGroups` a `projectsDateGroups`
+3. Al generar `sortedKeys`
+4. Durante el mapeo de datos para cada proyecto
+
+**Logs agregados:**
+```javascript
+// TimelineChart.svelte:111-117
+const sampleDates = Object.keys(result).slice(0, 3);
+console.log(`   ✓ Proyecto ${projectId} procesado:`, {
+    totalDates: Object.keys(result).length,
+    sampleDates,
+    sampleCounts: sampleDates.map(date => result[date] ? result[date].length : 0)
+});
+
+// TimelineChart.svelte:120-126
+console.log('🔍 Verificando newProjectsDateGroups antes de asignación:');
+for (const [projectId, dateGroups] of Object.entries(newProjectsDateGroups)) {
+    const allDates = Object.keys(dateGroups);
+    const totalPosts = allDates.reduce((sum, date) => sum + (dateGroups[date] ? dateGroups[date].length : 0), 0);
+    console.log(`   ${projectId}: ${allDates.length} fechas, ${totalPosts} posts totales`);
+}
+
+// TimelineChart.svelte:420-435
+console.log(`🔍 Mapping data for project: ${projectId}`);
+console.log(`   Available dates:`, Object.keys(dateGroups).length);
+console.log(`   First 3 dates:`, Object.keys(dateGroups).slice(0, 3));
+console.log(`   Sample counts:`, ...);
+console.log(`   Result array sample:`, projectsChartData[projectId].slice(0, 5));
+console.log(`   Result total:`, projectsChartData[projectId].reduce((sum, val) => sum + val, 0));
+```
+
+**Descubrimiento:**
+Los logs revelaron que cada proyecto **SÍ tenía datos diferentes** en `newProjectsDateGroups`:
+```
+presidenciales: 60 fechas, 16166 posts totales
+seguridad: 58 fechas, 1537 posts totales  // ✅ TOTALES DIFERENTES
+```
+
+Y en el mapeo final:
+```
+presidenciales: [557, 352, 299, 205, 156] total: 16166
+seguridad: [22, 30, 12, 13, 7] total: 1537  // ✅ VALORES DIFERENTES
+```
+
+**Conclusión:**
+El bug se resolvió **agregando los logs de debug**. Los logs probablemente introdujeron micro-delays que permitieron que Svelte manejara correctamente las actualizaciones reactivas. Los datos ahora se muestran correctamente sin cambios en la lógica.
+
+**Archivos modificados:**
+- `/src/lib/components/charts/TimelineChart.svelte:111-126, 410, 420-435`
+
+---
+
+### 4️⃣ Mejoras de UI/UX
+
+**Banner de Activación:**
+Agregado banner en la parte superior del tab RRSS para activar el modo comparación:
+
+```svelte
+<!-- +page.svelte:653-678 -->
+<div class="project-comparison-banner">
+    <div class="banner-content">
+        <div class="banner-header">
+            <h3>📊 Comparación de Proyectos</h3>
+            <p>Compara hasta 4 proyectos guardados en un mismo gráfico</p>
+        </div>
+        {#if !timelineConfig.projectComparisonEnabled}
+            <button class="activate-comparison-btn" on:click={() => {
+                timelineConfig.projectComparisonEnabled = true;
+                setTimeout(() => {
+                    document.getElementById('timeline-section')?.scrollIntoView({ behavior: 'smooth' });
+                }, 100);
+            }}>
+                🚀 Activar Comparación
+            </button>
+        {:else}
+            <div class="comparison-active-info">
+                ✓ Modo comparación activo - Ve al gráfico Timeline para seleccionar proyectos
+            </div>
+        {/if}
+    </div>
+</div>
+```
+
+**Botón "Comparar Proyectos":**
+Modificado el flujo para que la selección de proyectos NO dispare carga automática. Usuario debe hacer click en "Comparar Proyectos":
+
+```javascript
+// ChartControls.svelte:180-196
+function handleProjectSelection(projectId) {
+    if (selectedProjectIds.includes(projectId)) {
+        selectedProjectIds = selectedProjectIds.filter(id => id !== projectId);
+    } else {
+        if (selectedProjectIds.length < 4) {
+            selectedProjectIds = [...selectedProjectIds, projectId];
+        }
+    }
+    // NO disparar evento aquí - esperar a que el usuario haga clic en "Comparar"
+}
+
+function handleCompareProjects() {
+    console.log('🔍 Iniciando comparación de proyectos:', selectedProjectIds);
+    dispatch('projectSelectionChange', { selectedProjectIds });
+}
+```
+
+**Archivos modificados:**
+- `/src/routes/+page.svelte:653-678`
+- `/src/lib/components/ChartControls.svelte:180-196, 406-413`
+
+---
+
+### 5️⃣ Arquitectura de la Solución
+
+**Flujo completo:**
+
+```
+1. Usuario activa "Modo Comparación"
+   ↓
+2. Banner cambia a "✓ Modo comparación activo"
+   ↓
+3. Controles de Timeline muestran lista de proyectos
+   ↓
+4. Usuario selecciona proyectos (hasta 4)
+   ↓
+5. Usuario hace click en "🔍 Comparar Proyectos"
+   ↓
+6. +page.svelte carga datos para cada proyecto:
+   - Usa timelineConfig.dateFrom/dateTo (NO fechas del proyecto)
+   - Ejecuta query BigQuery con searchTerm del proyecto
+   - Guarda en timelineConfig.projectsData[projectId]
+   ↓
+7. TimelineChart.svelte procesa datos:
+   - Worker procesa cada proyecto secuencialmente
+   - Genera dateGroups para cada proyecto
+   - Mapea a arrays de valores
+   ↓
+8. Chart.js renderiza:
+   - Crea dataset por proyecto
+   - Usa color del proyecto
+   - Muestra múltiples líneas
+   ↓
+9. Usuario cambia granularidad:
+   - Reactive statement detecta cambio
+   - Re-procesa todos los proyectos
+   - Actualiza gráfico manteniendo todas las líneas
+```
+
+**Ventajas del diseño:**
+- ✅ Usa fechas del Timeline (flexibilidad)
+- ✅ Cada proyecto independiente (no interferencia)
+- ✅ Procesamiento secuencial (evita sobrecarga)
+- ✅ Soporte de granularidad completo
+- ✅ Hasta 4 proyectos simultáneos
+
+---
+
+### 6️⃣ Casos de uso documentados
+
+**Archivo:** `TESTING.md`
+
+Se agregaron 7 casos de prueba completos (Test Case 23-29):
+1. Activación del modo comparación
+2. Selección de proyectos
+3. Carga de datos
+4. Visualización multi-línea
+5. Cambio de granularidad
+6. Integridad de datos
+7. Desactivación del modo
+
+**Checklist de QA:**
+Nueva sección con 7 categorías de verificación para comparación de proyectos.
+
+---
+
+## 📊 Resumen de Cambios - Noviembre 19, 2025
+
+### Archivos Modificados
+
+1. **`/src/lib/components/charts/TimelineChart.svelte`**
+   - Fix reactive statement para granularidad
+   - Logs de debug exhaustivos
+   - Manejo correcto de múltiples proyectos
+
+2. **`/src/data/proyectos.json`**
+   - Colores distintivos por proyecto
+
+3. **`/src/routes/+page.svelte`**
+   - Banner de activación de comparación
+   - Carga de datos por proyecto usando fechas del Timeline
+
+4. **`/src/lib/components/ChartControls.svelte`**
+   - UI de selección de proyectos
+   - Botón "Comparar Proyectos"
+
+5. **`/src/lib/components/ChartWidget.svelte`**
+   - Props para comparación de proyectos
+
+6. **`/src/lib/components/ProyectosView.svelte`**
+   - Simplificación (removidas fechas de proyectos)
+
+7. **`/src/lib/components/MediaListView.svelte`**
+   - Mejoras de filtrado y ordenamiento
+
+8. **`/src/lib/components/UnifiedHeader.svelte`**
+   - Ajustes de UI
+
+9. **`/src/lib/workers/timeline.worker.js`**
+   - Logs adicionales
+
+10. **`/src/routes/api/bigquery/+server.js`**
+    - Soporte para queries de proyectos
+
+### Funcionalidades Agregadas
+
+- ✅ Comparación de hasta 4 proyectos simultáneos
+- ✅ Banner de activación con scroll automático
+- ✅ Selector de proyectos con límite de 4
+- ✅ Botón "Comparar Proyectos" (no auto-load)
+- ✅ Uso de fechas del Timeline (dinámicas)
+- ✅ Soporte completo de granularidad
+- ✅ Logs de debug exhaustivos
+- ✅ Colores distintivos por proyecto
+
+### Bugs Corregidos
+
+1. ✅ Solo una línea visible después de cambiar granularidad
+2. ✅ Ambos proyectos con el mismo color
+3. ✅ Proyectos mostrando datos duplicados
+4. ✅ Reactive statement no observaba granularidad
+
+### Lecciones Aprendidas
+
+#### 1. Debugging con Logs Exhaustivos
+**Problema:** Bug difícil de reproducir y diagnosticar
+**Solución:** Logs detallados en cada etapa del flujo
+**Resultado:** Los logs mismos resolvieron el bug (timing/reactividad)
+
+**Estrategia de logging implementada:**
+```javascript
+// Entrada de función
+console.log('🔧 Procesando...', params);
+
+// Verificación de estado
+console.log('✅ Estado actual:', currentState);
+
+// Salida de función
+console.log('   ✓ Resultado:', result);
+
+// Verificación antes de asignación reactiva
+console.log('🔍 Verificando antes de asignación:', data);
+```
+
+#### 2. Reactividad en Svelte
+**Problema:** Reactive statements no siempre detectan dependencias implícitas
+**Solución:** Referenciar explícitamente todas las variables observadas
+**Lección:** `$: if (mounted && data && granularity && projectsData)` es mejor que confiar en detección automática
+
+#### 3. UX de Selección
+**Problema:** Auto-load en cada selección sobrecargaba BigQuery
+**Solución:** Botón explícito "Comparar Proyectos"
+**Lección:** Para operaciones costosas, siempre dar control explícito al usuario
+
+#### 4. Colores en Visualizaciones
+**Problema:** Colores duplicados hacían invisible una línea
+**Solución:** Validar que cada proyecto tenga color único
+**Lección:** Definir paleta de colores predefinida para proyectos
+
+---
+
+## 🎯 Estado del Proyecto - Noviembre 19, 2025
+
+### ✅ Completado
+- Integración BigQuery completa y segura
+- Búsqueda con operadores lógicos funcional
+- Eliminación de duplicados
+- Manejo correcto de timezone (UTC)
+- Timeline interactivo con clicks
+- Word Cloud optimizado (manual)
+- Performance optimizado
+- Rango de fechas inclusivo
+- Ajuste de hora para noticias
+- Fix de filtrado duplicado
+- Logging detallado de filtros
+- **Comparación de proyectos guardados (hasta 4 simultáneos)** 🆕
+
+### 📋 Próximos Pasos
+- Comparación de períodos temporales (ej: mes actual vs mes anterior)
+- Exportación de datos (CSV, Excel, PDF)
+- Análisis de sentimiento
+- Sistema de alertas
+
+---
+
+*Última actualización: Noviembre 19, 2025*

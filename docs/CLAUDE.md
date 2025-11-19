@@ -5,7 +5,7 @@
 **Proyecto:** Dashboard de Análisis PolíticO
 **Framework:** SvelteKit con integración BigQuery
 **Deployment:** Vercel
-**Última actualización:** Enero 2025
+**Última actualización:** Noviembre 2025
 
 ---
 
@@ -17,6 +17,7 @@ Este es un dashboard interactivo para análisis político que permite:
 - Análisis de engagement (likes, comentarios, shares)
 - Nube de palabras para análisis de contenido
 - Integración con Google BigQuery para consultas masivas de datos
+- **Comparación de proyectos guardados** (hasta 4 proyectos simultáneos) 🆕
 
 ### Datos Importantes
 - **Tabla BigQuery:** `secom-359014.ProyectosTooldata.datav2`
@@ -125,7 +126,87 @@ return dateObj.toLocaleDateString('es-CL', {
 });
 ```
 
-### ✅ 6. Optimización de Performance
+### ✅ 6. Comparación de Proyectos (NUEVO - Noviembre 2025)
+Funcionalidad para comparar hasta 4 proyectos guardados simultáneamente en un mismo gráfico.
+
+**Características:**
+- Selector de proyectos en controles de Timeline
+- Comparación de hasta 4 proyectos simultáneos
+- Uso de fechas del Timeline (no las guardadas en cada proyecto)
+- Cada proyecto con su color distintivo
+- Soporte de granularidad (hora/día/semana/mes)
+- Procesamiento paralelo con Web Workers
+
+**Flujo de Uso:**
+1. Usuario activa "Modo Comparación" desde banner en tab RRSS
+2. Selecciona proyectos a comparar (hasta 4)
+3. Hace clic en "Comparar Proyectos"
+4. Timeline muestra múltiples líneas, una por proyecto
+5. Cambiar granularidad actualiza todas las líneas
+
+**Archivos clave:**
+- `/src/routes/+page.svelte` - Orquestación y carga de datos por proyecto
+- `/src/lib/components/charts/TimelineChart.svelte` - Renderizado multi-proyecto
+- `/src/lib/components/ChartControls.svelte` - UI de selección
+- `/src/lib/components/ChartWidget.svelte` - Props de comparación
+- `/src/data/proyectos.json` - Definiciones de proyectos con colores
+
+**Implementación técnica:**
+```javascript
+// +page.svelte:485-540 - Carga datos para cada proyecto
+async function handleProjectComparisonToggle(event) {
+  if (event.detail.enabled) {
+    // Cargar datos para cada proyecto seleccionado
+    for (const proyecto of proyectosSeleccionados) {
+      const query = {
+        searchTerm: proyecto.query.searchTerm,
+        dateFrom: timelineConfig.dateFrom,  // Usa fechas del Timeline
+        dateTo: timelineConfig.dateTo,       // No las del proyecto
+        redes: proyecto.query.redes
+      };
+      const data = await fetchFromBigQuery(query);
+      timelineConfig.projectsData[proyecto.id] = data;
+    }
+  }
+}
+
+// TimelineChart.svelte:78-127 - Procesa cada proyecto con Worker
+for (const [projectId, projectPosts] of Object.entries(projectsData)) {
+  const result = await new Promise((resolve) => {
+    worker.postMessage({
+      posts: projectPosts,
+      granularity: granularity,
+      comparativeEnabled: false
+    });
+    worker.addEventListener('message', (e) => {
+      if (e.data.type === 'complete') {
+        resolve(e.data.data.dateGroupsA);
+      }
+    });
+  });
+  newProjectsDateGroups[projectId] = result;
+}
+
+// TimelineChart.svelte:518-562 - Crea datasets de Chart.js
+Object.entries(projectsChartData).forEach(([projectId, data]) => {
+  const proyecto = projects.find(p => p.id === projectId);
+  datasets.push({
+    label: proyecto.nombre,
+    data: data,
+    borderColor: proyecto.color,
+    backgroundColor: proyecto.color + '20',
+    tension: 0.1
+  });
+});
+```
+
+**Notas importantes:**
+- **Fechas del Timeline:** Usa `timelineConfig.dateFrom/dateTo` en lugar de las fechas guardadas en cada proyecto
+- **Colores distintos:** Cada proyecto debe tener un color único en `proyectos.json`
+- **Procesamiento secuencial:** Worker procesa proyectos uno por uno para evitar sobrecarga
+- **Reactive statements:** La granularidad dispara re-procesamiento automático
+
+### ✅ 7. Optimización de Performance
 - Word Cloud procesamiento manual (no automático)
 - Cálculo de engagement optimizado con derivado reactivo
 - Web Workers para procesamiento pesado
@@ -383,6 +464,9 @@ Antes de cada deploy:
 - [ ] Duplicados se eliminan correctamente
 - [ ] Word Cloud funciona (modo manual)
 - [ ] Top posts se calculan correctamente
+- [ ] **Comparación de proyectos funciona (2-4 proyectos simultáneos)** 🆕
+- [ ] **Cambio de granularidad mantiene todas las líneas de proyectos** 🆕
+- [ ] **Cada proyecto muestra su color distintivo** 🆕
 - [ ] No hay errores en consola del navegador
 - [ ] Variables de entorno configuradas en Vercel
 

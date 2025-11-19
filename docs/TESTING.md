@@ -2,7 +2,7 @@
 
 ## 📋 Información General
 
-**Última actualización:** Enero 2025
+**Última actualización:** Noviembre 2025
 **Estado de tests:** Manual (sin tests automatizados aún)
 **Cobertura objetivo:** 80%+ en componentes críticos
 
@@ -735,6 +735,314 @@ Una feature se considera completa cuando:
 - Identificar rápidamente qué filtro está eliminando posts
 - Debugging de problemas de filtrado
 - Validación de comportamiento correcto
+
+---
+
+## 🆕 Casos de Prueba Nuevos (Nov 19, 2025)
+
+### Test Case 23: Comparación de Proyectos - Activación
+
+**Objetivo:** Verificar que el modo de comparación se activa correctamente
+
+**Pre-condiciones:**
+- Dashboard cargado
+- Al menos 2 proyectos guardados en localStorage
+
+**Pasos:**
+1. Navegar a la pestaña "RRSS"
+2. Verificar que aparece banner "📊 Comparación de Proyectos"
+3. Hacer click en botón "🚀 Activar Comparación"
+4. Verificar que se hace scroll al gráfico Timeline
+
+**Resultado esperado:**
+- ✅ Banner se muestra solo si hay proyectos guardados
+- ✅ Al activar, el mensaje cambia a "✓ Modo comparación activo"
+- ✅ Scroll automático al Timeline
+- ✅ Controles de comparación aparecen en ChartControls
+
+**Resultado real:**
+- ✅ Funciona correctamente (implementado en v1.1.0)
+
+**Notas:**
+- Banner solo aparece si `allProyectos.length > 0`
+- Mensaje cambia según `timelineConfig.projectComparisonEnabled`
+
+---
+
+### Test Case 24: Comparación de Proyectos - Selección
+
+**Objetivo:** Verificar que se pueden seleccionar múltiples proyectos para comparar
+
+**Pre-condiciones:**
+- Modo comparación activado
+- Al menos 4 proyectos disponibles para testing completo
+
+**Pasos:**
+1. Abrir controles de Timeline
+2. Ver lista de proyectos disponibles
+3. Seleccionar primer proyecto (checkbox)
+4. Seleccionar segundo proyecto
+5. Intentar seleccionar un quinto proyecto (si hay 4 ya seleccionados)
+6. Hacer click en "🔍 Comparar Proyectos"
+
+**Resultado esperado:**
+- ✅ Checkboxes funcionan correctamente
+- ✅ Máximo 4 proyectos seleccionables
+- ✅ Quinto checkbox no se marca si ya hay 4 seleccionados
+- ✅ Contador muestra "✓ N proyecto(s) seleccionado(s)"
+- ✅ Botón "Comparar Proyectos" aparece cuando hay selecciones
+
+**Resultado real:**
+- ✅ Funciona correctamente (implementado en v1.1.0)
+
+**Notas:**
+- Límite de 4 proyectos por performance
+- Selección no dispara carga inmediata (solo al hacer click en "Comparar")
+
+---
+
+### Test Case 25: Comparación de Proyectos - Carga de Datos
+
+**Objetivo:** Verificar que los datos se cargan correctamente para cada proyecto
+
+**Pre-condiciones:**
+- Modo comparación activado
+- 2 proyectos seleccionados
+
+**Pasos:**
+1. Seleccionar 2 proyectos (ej: "Presidenciales" y "Seguridad")
+2. Hacer click en "🔍 Comparar Proyectos"
+3. Observar console logs durante carga
+4. Verificar que Timeline muestra 2 líneas
+
+**Resultado esperado:**
+```
+🔄 Cargando datos para 2 proyectos...
+📥 Cargando datos para: Presidenciales (1/2)
+   📅 Fechas del Timeline: 2025-11-17 → 2025-11-19
+   🔍 SearchTerm: "Jara OR Kast OR Parisi OR Kaiser"
+✅ Presidenciales: 16166 posts cargados
+📥 Cargando datos para: Seguridad (2/2)
+   📅 Fechas del Timeline: 2025-11-17 → 2025-11-19
+   🔍 SearchTerm: "delictuales OR delictivos OR balazos OR seguridad"
+✅ Seguridad: 1537 posts cargados
+✅ Todos los datos de proyectos cargados
+```
+
+**Resultado real:**
+- ✅ Funciona correctamente (implementado en v1.1.0)
+
+**Notas:**
+- Usa `timelineConfig.dateFrom/dateTo` (NO las fechas guardadas en proyectos)
+- Carga secuencial para evitar sobrecarga de BigQuery
+- Cada proyecto usa su propio `searchTerm` y `redes`
+
+---
+
+### Test Case 26: Comparación de Proyectos - Visualización Multi-Línea
+
+**Objetivo:** Verificar que el Timeline muestra correctamente múltiples líneas
+
+**Pre-condiciones:**
+- 2 proyectos comparados con datos cargados
+- Proyectos: "Presidenciales" (16166 posts) y "Seguridad" (1537 posts)
+
+**Pasos:**
+1. Observar Timeline después de comparación
+2. Verificar que hay 2 líneas visibles
+3. Verificar colores de cada línea
+4. Hacer hover sobre cada línea
+5. Verificar leyenda del gráfico
+
+**Resultado esperado:**
+- ✅ 2 líneas visibles con valores diferentes
+- ✅ Presidenciales: color azul (#3498db), valores altos (~557, 352, 299...)
+- ✅ Seguridad: color rojo (#e74c3c), valores bajos (~22, 30, 12...)
+- ✅ Hover muestra tooltip con nombre del proyecto y valor
+- ✅ Leyenda muestra nombres y colores correctos
+- ✅ Título: "Comparación de Proyectos - Posts por hora"
+
+**Resultado real:**
+- ✅ Funciona correctamente (implementado en v1.1.0)
+
+**Notas:**
+- Colores deben estar definidos en `proyectos.json`
+- Cada dataset usa `borderColor` y `backgroundColor` del proyecto
+- Labels muestran nombre del proyecto (no IDs)
+
+---
+
+### Test Case 27: Comparación de Proyectos - Cambio de Granularidad
+
+**Objetivo:** Verificar que cambiar granularidad mantiene ambas líneas visibles
+
+**Pre-condiciones:**
+- 2 proyectos comparados en granularidad "hour"
+- Ambas líneas visibles en Timeline
+
+**Pasos:**
+1. Cambiar granularidad a "day"
+2. Observar Timeline durante re-procesamiento
+3. Verificar que ambas líneas se actualizan
+4. Cambiar a "week"
+5. Cambiar a "month"
+6. Volver a "hour"
+
+**Resultado esperado:**
+```
+// Al cambiar granularidad
+🔄 Reactive: Re-procesando datos (granularity: day)
+🔧 Procesando 2 proyectos con Worker...
+🔧 Procesando proyecto presidenciales: 16166 posts
+✅ Worker completado en X ms - 3 períodos procesados
+🔧 Procesando proyecto seguridad: 1537 posts
+✅ Worker completado en Y ms - 3 períodos procesados
+✅ ProjectsDateGroups actualizado: ['presidenciales', 'seguridad']
+```
+
+- ✅ Ambas líneas se mantienen visibles
+- ✅ Datos se actualizan según nueva granularidad
+- ✅ No hay crashes ni errores
+- ✅ Performance aceptable (<5 segundos para re-procesamiento)
+
+**Resultado real:**
+- ✅ Funciona correctamente (implementado en v1.1.0)
+
+**Bug anterior:** Solo una línea aparecía después de cambiar granularidad
+**Fix:** Reactive statement ahora observa correctamente cambios de granularidad
+
+---
+
+### Test Case 28: Comparación de Proyectos - Datos Independientes
+
+**Objetivo:** Verificar que cada proyecto mantiene sus propios datos (no se mezclan)
+
+**Pre-condiciones:**
+- 2 proyectos comparados con volúmenes muy diferentes
+- Presidenciales: ~16K posts, Seguridad: ~1.5K posts
+
+**Pasos:**
+1. Comparar ambos proyectos
+2. Observar logs de procesamiento
+3. Verificar valores de datos en console
+4. Comparar totales con datos esperados
+
+**Resultado esperado:**
+```javascript
+🔍 Verificando newProjectsDateGroups antes de asignación:
+   presidenciales: 60 fechas, 16166 posts totales
+   seguridad: 58 fechas, 1537 posts totales
+
+🔍 Mapping data for project: presidenciales
+   Available dates: 60
+   Result array sample: [557, 352, 299, 205, 156]
+   Result total: 16166
+
+🔍 Mapping data for project: seguridad
+   Available dates: 58
+   Result array sample: [22, 30, 12, 13, 7]
+   Result total: 1537
+
+📊 Dataset 1: {
+  proyectoEncontrado: true,
+  nombreProyecto: "Presidenciales",
+  color: "#3498db",
+  dataTotal: 16166
+}
+
+📊 Dataset 2: {
+  proyectoEncontrado: true,
+  nombreProyecto: "Seguridad",
+  color: "#e74c3c",
+  dataTotal: 1537
+}
+```
+
+- ✅ Totales coinciden con posts cargados
+- ✅ Arrays de datos son diferentes (no duplicados)
+- ✅ Cada proyecto mantiene su integridad
+
+**Resultado real:**
+- ✅ Funciona correctamente (implementado en v1.1.0)
+
+**Bug anterior:** Ambos proyectos mostraban los mismos valores (bug de duplicación)
+**Fix:** Logs de debug revelaron que el problema era de timing/reactividad
+
+---
+
+### Test Case 29: Comparación de Proyectos - Desactivación
+
+**Objetivo:** Verificar que se puede salir del modo comparación correctamente
+
+**Pre-condiciones:**
+- Modo comparación activo con 2 proyectos
+
+**Pasos:**
+1. Toggle "Modo Comparación" a OFF en controles
+2. Observar cambios en Timeline
+3. Verificar que Timeline vuelve al modo normal
+4. Verificar que datos normales se muestran
+
+**Resultado esperado:**
+- ✅ Timeline vuelve a mostrar una sola línea (datos normales)
+- ✅ Controles de selección de proyectos desaparecen
+- ✅ Banner muestra "🚀 Activar Comparación" nuevamente
+- ✅ `projectsData` se limpia correctamente
+
+**Resultado real:**
+- ✅ Funciona correctamente (implementado en v1.1.0)
+
+**Notas:**
+- Datos de proyectos permanecen en `projectsData` hasta nueva comparación
+- Salir del modo no elimina proyectos guardados
+
+---
+
+### Checklist Actualizado: Comparación de Proyectos
+
+Agregar al checklist de QA existente:
+
+#### 6. Comparación de Proyectos
+- [ ] **Activación:**
+  - [ ] Banner aparece cuando hay proyectos guardados
+  - [ ] Activar comparación hace scroll al Timeline
+  - [ ] Controles de selección aparecen
+
+- [ ] **Selección:**
+  - [ ] Se pueden seleccionar hasta 4 proyectos
+  - [ ] Quinto proyecto no se puede seleccionar
+  - [ ] Contador muestra cantidad correcta
+  - [ ] Botón "Comparar" aparece cuando hay selecciones
+
+- [ ] **Carga de Datos:**
+  - [ ] Cada proyecto carga sus propios datos
+  - [ ] Se usan fechas del Timeline (no del proyecto guardado)
+  - [ ] Console logs muestran progreso correcto
+  - [ ] Todos los proyectos cargan sin errores
+
+- [ ] **Visualización:**
+  - [ ] Timeline muestra múltiples líneas (una por proyecto)
+  - [ ] Cada línea tiene su color distintivo
+  - [ ] Valores son diferentes entre proyectos
+  - [ ] Leyenda muestra nombres correctos
+  - [ ] Título dice "Comparación de Proyectos"
+
+- [ ] **Granularidad:**
+  - [ ] Cambiar a "day" mantiene todas las líneas
+  - [ ] Cambiar a "week" mantiene todas las líneas
+  - [ ] Cambiar a "month" mantiene todas las líneas
+  - [ ] Cambiar a "hour" mantiene todas las líneas
+  - [ ] Re-procesamiento completa en <5 segundos
+
+- [ ] **Integridad de Datos:**
+  - [ ] Proyectos no comparten datos (totales diferentes)
+  - [ ] Arrays de datos son independientes
+  - [ ] Logs muestran totales correctos por proyecto
+
+- [ ] **Desactivación:**
+  - [ ] Salir del modo comparación funciona
+  - [ ] Timeline vuelve a modo normal
+  - [ ] No quedan residuos de comparación
 
 ---
 

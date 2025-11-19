@@ -1,12 +1,12 @@
 # Product Backlog - Dashboard Político
 
-## 📅 Última actualización: Enero 2025
+## 📅 Última actualización: Noviembre 2025
 
 ---
 
 ## 🎯 Estado Actual del Proyecto
 
-### ✅ Completado (Enero 2025)
+### ✅ Completado (Noviembre 2025)
 - [x] Integración con BigQuery
 - [x] Búsqueda case-insensitive
 - [x] Operadores lógicos (AND, OR, NOT, paréntesis)
@@ -19,6 +19,7 @@
 - [x] Optimización de performance
 - [x] Validaciones de seguridad en API
 - [x] Deploy en Vercel con adapter-vercel
+- [x] **Comparación de proyectos guardados (hasta 4 simultáneos)** 🆕
 
 ---
 
@@ -127,23 +128,29 @@
 
 ---
 
-### 6. Comparación de Períodos
-**Descripción:** Comparar dos períodos de tiempo diferentes
+### 6. Comparación de Períodos (Parcialmente Completado ✅)
+**Estado:** ✅ Comparación de proyectos implementada, pendiente comparación de períodos temporales
 
-**Tareas:**
-- [ ] Selector de dos rangos de fechas (A vs B)
-- [ ] Timeline con dos líneas superpuestas
-- [ ] Métricas comparativas (% de cambio)
-- [ ] Tabla de diferencias
-- [ ] Palabras que subieron/bajaron en frecuencia
+**Completado:**
+- [x] Selector de múltiples proyectos (hasta 4)
+- [x] Timeline con múltiples líneas superpuestas
+- [x] Colores distintivos por proyecto
+- [x] Usa fechas del Timeline (ajustables dinámicamente)
+- [x] Soporte de granularidad (hora/día/semana/mes)
 
-**Estimación:** 2-3 días
-**Valor:** Medio-Alto - Permite ver evolución temporal
+**Pendiente (Comparación Temporal):**
+- [ ] Selector de dos rangos de fechas distintos (ej: misma semana del año pasado vs este año)
+- [ ] Métricas comparativas (% de cambio período vs período)
+- [ ] Tabla de diferencias temporales
+- [ ] Palabras que subieron/bajaron en frecuencia entre períodos
+
+**Estimación restante:** 2-3 días
+**Valor:** Medio-Alto - Permite ver evolución temporal y tendencias
 
 **Archivos afectados:**
-- `/src/lib/stores/dashboard.js` - Soporte para dos datasets
-- `/src/lib/components/charts/TimelineChart.svelte` - Líneas comparativas
-- `/src/routes/+page.svelte` - UI de comparación
+- `/src/lib/stores/dashboard.js` - Extender soporte para rangos temporales
+- `/src/lib/components/charts/TimelineChart.svelte` - UI de comparación temporal
+- `/src/routes/+page.svelte` - Selector de períodos
 
 ---
 
