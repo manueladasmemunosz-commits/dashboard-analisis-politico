@@ -136,7 +136,7 @@
 
 	// Estado de Word Cloud (carga diferida)
 	let wordCloudEnabled = false;
-	let mediosWordCloudEnabled = false;
+	let mediosWordCloudEnabled = true;
 
 	// Actualizar Word Cloud automáticamente cuando cambien los filtros (si está habilitado)
 	$: if (wordCloudEnabled && socialMediaPosts) {
@@ -1092,7 +1092,6 @@
 	</div>
 
 	<!-- Gráficos de Análisis de Medios -->
-	{#if newsPosts.length > 0}
 	<div id="medios-analytics-section" class="analysis-section">
 		<div class="section-header">
 			<h2 class="section-title">📊 Análisis de Medios</h2>
@@ -1165,7 +1164,6 @@
 			</ChartWidget>
 		</div>
 	</div>
-	{/if}
 	{/if}
 
 	<!-- PESTAÑA USUARIOS -->
