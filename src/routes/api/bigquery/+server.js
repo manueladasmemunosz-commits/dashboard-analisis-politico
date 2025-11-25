@@ -397,6 +397,165 @@ function getBigQueryClient() {
 }
 
 /**
+ * Construye una condición de búsqueda SQL respetando operadores lógicos (AND, OR, NOT)
+ * Soporta: palabras, frases entre comillas, paréntesis, operadores AND/OR/NOT
+ */
+function buildSearchCondition(searchTerm) {
+	const terms = tokenizeSearchTerm(searchTerm);
+	return buildConditionFromTokens(terms);
+}
+
+/**
+ * Tokeniza el término de búsqueda en palabras, frases y operadores
+ */
+function tokenizeSearchTerm(searchTerm) {
+	const tokens = [];
+	let i = 0;
+
+	while (i < searchTerm.length) {
+		// Saltar espacios
+		if (/\s/.test(searchTerm[i])) {
+			i++;
+			continue;
+		}
+
+		// Paréntesis
+		if (searchTerm[i] === '(' || searchTerm[i] === ')') {
+			tokens.push({ type: 'paren', value: searchTerm[i] });
+			i++;
+			continue;
+		}
+
+		// Frases exactas entre comillas
+		if (searchTerm[i] === '"') {
+			let j = i + 1;
+			while (j < searchTerm.length && searchTerm[j] !== '"') j++;
+			const phrase = searchTerm.substring(i + 1, j);
+			tokens.push({ type: 'phrase', value: phrase });
+			i = j + 1;
+			continue;
+		}
+
+		// Palabras y operadores
+		let j = i;
+		while (j < searchTerm.length && !/[\s()"]/.test(searchTerm[j])) j++;
+		const word = searchTerm.substring(i, j);
+		const upperWord = word.toUpperCase();
+
+		if (upperWord === 'AND' || upperWord === 'OR') {
+			tokens.push({ type: 'operator', value: upperWord });
+		} else if (upperWord === 'NOT') {
+			tokens.push({ type: 'not', value: 'NOT' });
+		} else {
+			tokens.push({ type: 'word', value: word.toLowerCase() });
+		}
+
+		i = j;
+	}
+
+	return tokens;
+}
+
+/**
+ * Construye la condición SQL a partir de tokens
+ * Respeta precedencia: paréntesis > NOT > AND > OR
+ */
+function buildConditionFromTokens(tokens) {
+	if (tokens.length === 0) return null;
+
+	let index = 0;
+
+	function parseOr() {
+		let left = parseAnd();
+		if (!left) return null;
+
+		while (index < tokens.length && tokens[index].type === 'operator' && tokens[index].value === 'OR') {
+			index++; // Consumir OR
+			const right = parseAnd();
+			if (!right) break;
+			left = `(${left} OR ${right})`;
+		}
+
+		return left;
+	}
+
+	function parseAnd() {
+		let left = parseNot();
+		if (!left) return null;
+
+		while (index < tokens.length && tokens[index].type === 'operator' && tokens[index].value === 'AND') {
+			index++; // Consumir AND
+			const right = parseNot();
+			if (!right) break;
+			left = `(${left} AND ${right})`;
+		}
+
+		return left;
+	}
+
+	function parseNot() {
+		if (index < tokens.length && tokens[index].type === 'not') {
+			index++; // Consumir NOT
+			const expr = parsePrimary();
+			if (!expr) return null;
+			return `NOT (${expr})`;
+		}
+
+		return parsePrimary();
+	}
+
+	function parsePrimary() {
+		if (index >= tokens.length) return null;
+
+		const token = tokens[index];
+
+		// Paréntesis: (A AND B) OR C
+		if (token.type === 'paren' && token.value === '(') {
+			index++; // Consumir (
+			const expr = parseOr();
+			if (index < tokens.length && tokens[index].type === 'paren' && tokens[index].value === ')') {
+				index++; // Consumir )
+			}
+			return expr;
+		}
+
+		// Palabra
+		if (token.type === 'word') {
+			index++;
+			return buildWordCondition(token.value);
+		}
+
+		// Frase
+		if (token.type === 'phrase') {
+			index++;
+			return buildPhraseCondition(token.value);
+		}
+
+		return null;
+	}
+
+	return parseOr();
+}
+
+/**
+ * Construye condición SQL para una palabra completa con word boundaries
+ */
+function buildWordCondition(word) {
+	const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	const regexPattern = `\\b${escapedWord}\\b`;
+	return `(REGEXP_CONTAINS(LOWER(text), r'${regexPattern}') OR REGEXP_CONTAINS(LOWER(user_name), r'${regexPattern}'))`;
+}
+
+/**
+ * Construye condición SQL para una frase exacta con word boundaries
+ */
+function buildPhraseCondition(phrase) {
+	const escapedPhrase = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	const regexPattern = `\\b${escapedPhrase}\\b`;
+	return `(REGEXP_CONTAINS(LOWER(text), r'${regexPattern}') OR REGEXP_CONTAINS(LOWER(user_name), r'${regexPattern}'))`;
+}
+
+/**
  * POST /api/bigquery
  * Ejecuta una consulta segura a BigQuery
  */
@@ -465,73 +624,13 @@ export async function POST({ request }) {
 		console.log('🚫 Excluyendo inglés:', ENGLISH_COMMON_WORDS.length, 'palabras/patrones comunes');
 
 		// Agregar término de búsqueda si existe
-		// IMPORTANTE: Extraer frases exactas Y palabras clave por separado
-		// Las frases entre comillas se buscan como frases completas
-		// Los operadores lógicos (AND, OR, NOT) se aplican después en el cliente
+		// IMPORTANTE: Procesar operadores lógicos (AND, OR, NOT) correctamente
 		if (searchTerm && searchTerm.trim()) {
-			const searchConditions = [];
-
-			// Paso 1: Extraer frases exactas entre comillas
-			const exactPhrases = [];
-			const phraseRegex = /"([^"]+)"/g;
-			let match;
-			let searchWithoutPhrases = searchTerm;
-
-			while ((match = phraseRegex.exec(searchTerm)) !== null) {
-				exactPhrases.push(match[1].trim());
-				// Remover la frase de la búsqueda para procesarla por separado
-				searchWithoutPhrases = searchWithoutPhrases.replace(match[0], ' ');
-			}
-
-			// Agregar condiciones para frases exactas
-			exactPhrases.forEach(phrase => {
-				if (phrase.length > 0) {
-					// Escapar caracteres especiales de regex
-					const escapedPhrase = phrase.toLowerCase()
-						.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-					// Buscar frase completa con word boundaries
-					const regexPattern = `\\b${escapedPhrase}\\b`;
-					searchConditions.push(`(REGEXP_CONTAINS(LOWER(text), r'${regexPattern}') OR REGEXP_CONTAINS(LOWER(user_name), r'${regexPattern}'))`);
-					console.log(`📝 Frase exacta detectada: "${phrase}"`);
-				}
-			});
-
-			// Paso 2: Extraer palabras individuales (sin frases entre comillas)
-			const keywords = searchWithoutPhrases
-				.toLowerCase()
-				.replace(/[()]/g, ' ') // Eliminar paréntesis
-				.split(/\s+/) // Dividir por espacios
-				.filter(word =>
-					word.length > 2 && // Palabras de más de 2 caracteres
-					!['and', 'or', 'not'].includes(word) // Excluir operadores
-				)
-				.map(word => word.replace(/\*/g, '%')); // Convertir * a % para SQL LIKE
-
-			// Agregar condiciones para palabras individuales
-			keywords.forEach(keyword => {
-				// Detectar si tiene wildcards (%) - si los tiene, usar LIKE, sino usar REGEXP con word boundaries
-				const hasWildcard = keyword.includes('%');
-
-				if (hasWildcard) {
-					// Si tiene wildcards, usar LIKE para búsqueda parcial
-					const safeKeyword = escapeSqlString(keyword);
-					searchConditions.push(`(LOWER(text) LIKE '%${safeKeyword}%' OR LOWER(user_name) LIKE '%${safeKeyword}%')`);
-				} else {
-					// Sin wildcards: buscar palabra completa usando REGEXP con word boundaries
-					// Escapar caracteres especiales de regex
-					const escapedKeyword = keyword
-						.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-					// \b = word boundary (límite de palabra)
-					const regexPattern = `\\b${escapedKeyword}\\b`;
-					searchConditions.push(`(REGEXP_CONTAINS(LOWER(text), r'${regexPattern}') OR REGEXP_CONTAINS(LOWER(user_name), r'${regexPattern}'))`);
-				}
-			});
-
-			if (searchConditions.length > 0) {
-				baseQuery += ` AND (${searchConditions.join(' OR ')})`;
-				console.log(`🔍 Búsqueda BigQuery - Frases exactas: ${exactPhrases.length}, Palabras: ${keywords.length}`);
+			// Parser de búsqueda que respeta operadores lógicos
+			const searchCondition = buildSearchCondition(searchTerm);
+			if (searchCondition) {
+				baseQuery += ` AND ${searchCondition}`;
+				console.log(`🔍 Búsqueda BigQuery procesada con operadores lógicos`);
 			}
 		}
 
