@@ -172,8 +172,8 @@
 			// Deseleccionar proyecto
 			selectedProjectIds = selectedProjectIds.filter(id => id !== projectId);
 		} else {
-			// Seleccionar proyecto (máximo 4 proyectos)
-			if (selectedProjectIds.length < 4) {
+			// Seleccionar proyecto (máximo 6 proyectos)
+			if (selectedProjectIds.length < 6) {
 				selectedProjectIds = [...selectedProjectIds, projectId];
 			}
 		}
@@ -390,7 +390,7 @@
 									type="checkbox"
 									checked={selectedProjectIds.includes(proyecto.id)}
 									on:change={() => handleProjectSelection(proyecto.id)}
-									disabled={!selectedProjectIds.includes(proyecto.id) && selectedProjectIds.length >= 4}
+									disabled={!selectedProjectIds.includes(proyecto.id) && selectedProjectIds.length >= 6}
 								>
 								<span class="project-name" style="border-left: 3px solid {proyecto.color}">
 									{proyecto.nombre}

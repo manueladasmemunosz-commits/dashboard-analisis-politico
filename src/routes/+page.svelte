@@ -651,7 +651,7 @@
 		<div class="banner-content">
 			<div class="banner-header">
 				<h3>📊 Comparación de Proyectos</h3>
-				<p>Compara hasta 4 proyectos guardados en un mismo gráfico</p>
+				<p>Compara hasta 6 proyectos guardados en un mismo gráfico</p>
 			</div>
 			{#if !timelineConfig.projectComparisonEnabled}
 				<button class="activate-comparison-btn" on:click={() => {
