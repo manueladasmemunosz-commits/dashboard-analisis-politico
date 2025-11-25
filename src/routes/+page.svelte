@@ -121,7 +121,11 @@
 		type: 'line',
 		dateFrom: today,
 		dateTo: today,
-		granularity: 'day'
+		granularity: 'day',
+		// Comparación de proyectos
+		projectComparisonEnabled: false,
+		selectedProjectIds: [],
+		projectsData: {} // { projectId: [posts...] }
 	};
 
 	let mediosWordCloudConfig = {
@@ -457,6 +461,14 @@
 				timelineConfig.projectsData = {};
 				timelineConfig.selectedProjectIds = [];
 			}
+		} else if (chartName === 'mediosTimeline') {
+			mediosTimelineConfig.projectComparisonEnabled = enabled;
+
+			// Si se desactiva, limpiar los datos de proyectos
+			if (!enabled) {
+				mediosTimelineConfig.projectsData = {};
+				mediosTimelineConfig.selectedProjectIds = [];
+			}
 		}
 	}
 
@@ -468,24 +480,34 @@
 			timelineConfig.selectedProjectIds = projectIds;
 
 			// Cargar datos para los proyectos seleccionados
-			await loadProjectsData(projectIds);
+			await loadProjectsData(projectIds, 'timeline');
+		} else if (chartName === 'mediosTimeline') {
+			mediosTimelineConfig.selectedProjectIds = projectIds;
+
+			// Cargar datos para los proyectos seleccionados
+			await loadProjectsData(projectIds, 'mediosTimeline');
 		}
 	}
 
-	// IMPORTANTE: Esta función usa las fechas del Timeline (timelineConfig.dateFrom/dateTo)
+	// IMPORTANTE: Esta función usa las fechas del Timeline (timelineConfig.dateFrom/dateTo o mediosTimelineConfig.dateFrom/dateTo)
 	// en lugar de las fechas guardadas en cada proyecto. Esto permite ajustar
 	// dinámicamente el rango de fechas sin tener que editar cada proyecto guardado.
-	async function loadProjectsData(projectIds) {
+	async function loadProjectsData(projectIds, chartName = 'timeline') {
 		if (projectIds.length === 0) {
-			timelineConfig.projectsData = {};
+			if (chartName === 'timeline') {
+				timelineConfig.projectsData = {};
+			} else if (chartName === 'mediosTimeline') {
+				mediosTimelineConfig.projectsData = {};
+			}
 			return;
 		}
 
-		console.log(`🔄 Cargando datos para ${projectIds.length} proyectos...`);
+		console.log(`🔄 Cargando datos para ${projectIds.length} proyectos en ${chartName}...`);
 		isLoadingBigQuery = true;
 
 		try {
 			const newProjectsData = {};
+			const config = chartName === 'mediosTimeline' ? mediosTimelineConfig : timelineConfig;
 
 			for (let i = 0; i < projectIds.length; i++) {
 				const projectId = projectIds[i];
@@ -497,16 +519,16 @@
 				}
 
 				console.log(`📥 Cargando datos para: ${proyecto.nombre} (${i + 1}/${projectIds.length})`);
-				console.log(`   📅 Fechas del Timeline: ${timelineConfig.dateFrom} → ${timelineConfig.dateTo}`);
-			console.log(`   🔍 SearchTerm: "${proyecto.query.searchTerm}"`);
+				console.log(`   📅 Fechas del Timeline: ${config.dateFrom} → ${config.dateTo}`);
+				console.log(`   🔍 SearchTerm: "${proyecto.query.searchTerm}"`);
 
 				const response = await fetch('/api/bigquery', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
 						searchTerm: proyecto.query.searchTerm,
-						dateFrom: timelineConfig.dateFrom,
-						dateTo: timelineConfig.dateTo
+						dateFrom: config.dateFrom,
+						dateTo: config.dateTo
 					})
 				});
 
@@ -521,7 +543,11 @@
 				}
 			}
 
-			timelineConfig.projectsData = newProjectsData;
+			if (chartName === 'timeline') {
+				timelineConfig.projectsData = newProjectsData;
+			} else if (chartName === 'mediosTimeline') {
+				mediosTimelineConfig.projectsData = newProjectsData;
+			}
 			console.log('✅ Todos los datos de proyectos cargados');
 
 		} catch (error) {
@@ -1087,12 +1113,21 @@
 				showGranularityControls={true}
 				showSocialControls={false}
 				showComparativeMode={false}
+				showProjectComparison={true}
+				bind:projectComparisonEnabled={mediosTimelineConfig.projectComparisonEnabled}
+				bind:selectedProjectIds={mediosTimelineConfig.selectedProjectIds}
+				availableProjects={allProyectos}
+				on:projectComparisonToggle={handleProjectComparisonToggle}
+				on:projectSelectionChanged={handleProjectSelectionChanged}
 			>
 				<TimelineChart
 					data={newsPosts}
 					chartType={mediosTimelineConfig.type}
 					granularity={mediosTimelineConfig.granularity}
 					comparativeEnabled={false}
+					projectComparisonEnabled={mediosTimelineConfig.projectComparisonEnabled}
+					projectsData={mediosTimelineConfig.projectsData}
+					projects={allProyectos}
 				/>
 			</ChartWidget>
 
