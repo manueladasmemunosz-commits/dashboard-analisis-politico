@@ -19,7 +19,6 @@
 	import MediaListView from '$lib/components/MediaListView.svelte';
 	import UserTimelineView from '$lib/components/UserTimelineView.svelte';
 	import MediosNacionalVsRegionalChart from '$lib/components/charts/MediosNacionalVsRegionalChart.svelte';
-	import MediosVolumenRegionChart from '$lib/components/charts/MediosVolumenRegionChart.svelte';
 	import Papa from 'papaparse';
 
 	let totalPosts = 0;
@@ -128,10 +127,6 @@
 
 	let mediosNacionalVsRegionalConfig = {
 		type: 'doughnut'
-	};
-
-	let mediosVolumenRegionConfig = {
-		type: 'bar'
 	};
 
 	let mediosWordCloudConfig = {
@@ -1125,24 +1120,7 @@
 		</div>
 
 		<div class="charts-row">
-			<!-- Volumen por Región -->
-			<ChartWidget
-				title="🗺️ Volumen por Región"
-				chartName="mediosVolumenRegion"
-				bind:chartType={mediosVolumenRegionConfig.type}
-				chartTypes={['bar', 'horizontalBar']}
-				showDateControls={false}
-				showSocialControls={false}
-				showLimitControls={false}
-			>
-				<MediosVolumenRegionChart
-					data={newsPosts}
-					chartType={mediosVolumenRegionConfig.type}
-					mediosClassification={mediosClassification}
-				/>
-			</ChartWidget>
-
-			<!-- Word Cloud para Medios -->
+				<!-- Word Cloud para Medios -->
 			<ChartWidget
 				title="☁️ Nube de Palabras - Medios"
 				chartName="mediosWordCloud"
