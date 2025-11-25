@@ -18,7 +18,6 @@
 	import ProjectComparisonView from '$lib/components/ProjectComparisonView.svelte';
 	import MediaListView from '$lib/components/MediaListView.svelte';
 	import UserTimelineView from '$lib/components/UserTimelineView.svelte';
-	import MediosNacionalVsRegionalChart from '$lib/components/charts/MediosNacionalVsRegionalChart.svelte';
 	import Papa from 'papaparse';
 
 	let totalPosts = 0;
@@ -123,10 +122,6 @@
 		dateFrom: today,
 		dateTo: today,
 		granularity: 'day'
-	};
-
-	let mediosNacionalVsRegionalConfig = {
-		type: 'doughnut'
 	};
 
 	let mediosWordCloudConfig = {
@@ -1101,27 +1096,11 @@
 				/>
 			</ChartWidget>
 
-			<!-- Nacional vs Regional -->
-			<ChartWidget
-				title="🏛️ Nacional vs Regional"
-				chartName="mediosNacionalVsRegional"
-				bind:chartType={mediosNacionalVsRegionalConfig.type}
-				chartTypes={['doughnut', 'pie', 'bar']}
-				showDateControls={false}
-				showSocialControls={false}
-				showLimitControls={false}
-			>
-				<MediosNacionalVsRegionalChart
-					data={newsPosts}
-					chartType={mediosNacionalVsRegionalConfig.type}
-					mediosClassification={mediosClassification}
-				/>
-			</ChartWidget>
 		</div>
 
 		<div class="charts-row">
 				<!-- Word Cloud para Medios -->
-			<ChartWidget
+		<ChartWidget
 				title="☁️ Nube de Palabras - Medios"
 				chartName="mediosWordCloud"
 				bind:limit={mediosWordCloudConfig.limit}
