@@ -142,6 +142,23 @@
 	$: if (wordCloudEnabled && socialMediaPosts) {
 		processWordCloudData(socialMediaPosts);
 	}
+	// Actualizar Word Cloud de Medios automáticamente cuando cambien los filtros o proyectos
+	$: if (mediosWordCloudEnabled) {
+		if (mediosTimelineConfig.projectComparisonEnabled && mediosTimelineConfig.selectedProjectIds.length > 0) {
+			// Combinar posts de todos los proyectos seleccionados
+			const projectPosts = [];
+			for (const projectId of mediosTimelineConfig.selectedProjectIds) {
+				if (mediosTimelineConfig.projectsData[projectId]) {
+					projectPosts.push(...mediosTimelineConfig.projectsData[projectId]);
+				}
+			}
+			if (projectPosts.length > 0) {
+				processWordCloudData(projectPosts);
+			}
+		} else if (newsPosts) {
+			processWordCloudData(newsPosts);
+		}
+	}
 
 	// Estado de Scatter Chart (carga diferida)
 	let scatterChartEnabled = false;
@@ -535,8 +552,12 @@
 				const result = await response.json();
 
 				if (result.success) {
-					newProjectsData[projectId] = result.data;
-					console.log(`✅ ${proyecto.nombre}: ${result.data.length} posts cargados`);
+					let filteredData = result.data;
+					if (chartName === 'mediosTimeline') {
+						filteredData = result.data.filter(post => (post.source || '').toLowerCase() === 'news');
+					}
+					newProjectsData[projectId] = filteredData;
+					console.log(`✅ ${proyecto.nombre}: ${filteredData.length} posts cargados`);
 				} else {
 					console.error(`❌ Error cargando ${proyecto.nombre}:`, result.error);
 					newProjectsData[projectId] = [];
